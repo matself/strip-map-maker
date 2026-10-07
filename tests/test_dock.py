@@ -40,4 +40,7 @@ def test_dock_preview_for_a_guide_line():
     assert dock._placement is not None
     assert len(dock._placement.frames) == 8  # 280 mm at 1:1000 = 280 m, 10 % overlap
     assert dock.create_button.isEnabled()
+    dock._reset()
+    assert dock._source is None and dock._placement is None
+    assert not dock.create_button.isEnabled()
     dock.cleanup()

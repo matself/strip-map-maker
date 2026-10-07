@@ -83,7 +83,10 @@ class StripMapMakerDockWidget(QDockWidget):
         guide_form.addRow("Layer:", self.layer_combo)
         guide_form.addRow(use_selected)
         guide_form.addRow(self.draw_button)
+        clear_button = QPushButton("Clear and start over")
+        clear_button.clicked.connect(self._reset)
         guide_form.addRow(self.guide_label)
+        guide_form.addRow(clear_button)
         layout.addWidget(guide_box)
 
         setup_box = QGroupBox("2. Sheets")
@@ -252,12 +255,24 @@ class StripMapMakerDockWidget(QDockWidget):
         except SeriesError as error:
             self._message(str(error))
             return
+        self._reset(deselect=False)
+        self.info_label.setText(f"Created {Path(path).name}.")
+
+    def _reset(self, *_, deselect=True):
+        """Forget the guide line and the preview so a new series can be started."""
+        self._timer.stop()
+        if self.canvas.mapTool() is self._draw_tool:
+            self._stop_drawing()
         self._clear_preview()
         self._source = None
+        self._guide = None
         self._placement = None
         self.create_button.setEnabled(False)
         self.guide_label.setText("No guide line yet.")
-        self.info_label.setText(f"Created {Path(path).name}.")
+        self.info_label.setText("")
+        layer = self.layer_combo.currentLayer()
+        if deselect and isinstance(layer, QgsVectorLayer):
+            layer.removeSelection()
 
     def _message(self, text):
         self.iface.messageBar().pushMessage(
