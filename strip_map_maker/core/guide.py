@@ -5,6 +5,7 @@ A series has exactly one guide line. It is built either from one or more existin
 line features (chained end to end) or from a line the user draws. The source
 features are never modified; the guide is always a new, single-part geometry.
 """
+import math
 from dataclasses import dataclass, field
 
 from qgis.core import QgsGeometry, QgsPointXY, QgsWkbTypes
@@ -121,3 +122,30 @@ def single_line(geometry: QgsGeometry) -> QgsGeometry:
     if line.length() <= 0:
         raise GuideError("The guide line has zero length.")
     return line
+
+
+def smooth_line(geometry: QgsGeometry, window: float) -> QgsGeometry:
+    """Smooth a guide with a moving average along the line.
+
+    ``window`` is the averaging length in map units: meanders and wiggles shorter
+    than about this length are flattened, larger bends are kept. Both end points stay
+    fixed and the window shrinks towards them. ``window <= 0`` returns the line as is.
+    """
+    line = single_line(geometry)
+    length = line.length()
+    if window <= 0 or length <= 0:
+        return line
+    count = max(4, math.ceil(length / (window / 8)))  # about 8 samples per window
+    step = length / count
+    points = [line.interpolate(i * step).asPoint() for i in range(count + 1)]
+    reach = round(window / 2 / step)
+    smoothed = []
+    for i in range(count + 1):
+        r = min(reach, i, count - i)
+        chunk = points[i - r : i + r + 1]
+        smoothed.append(
+            QgsPointXY(
+                sum(p.x() for p in chunk) / len(chunk), sum(p.y() for p in chunk) / len(chunk)
+            )
+        )
+    return QgsGeometry.fromPolylineXY(smoothed)

@@ -149,3 +149,13 @@ def test_invalid_input_raises():
         place_frames(guide, 10, 10, 100)
     with pytest.raises(PlacementError):
         place_frames(guide, 10, 10, -1)
+
+
+def test_cover_line_decides_what_must_be_covered():
+    river = line([(x, 60 * math.sin(x / 50)) for x in range(0, 600, 5)])
+    straight = line([(0, 0), (600, 0)])
+    plain = place_frames(straight, 100, 40, 10)
+    assert uncovered_stretches(river, [f.geometry for f in plain.frames], 0.1)
+    covered = place_frames(straight, 100, 40, 10, cover=river)
+    assert len(covered.frames) >= len(plain.frames)
+    assert isinstance(covered.uncovered, list)

@@ -153,11 +153,22 @@ def _build(guide, length, width, height, count, tolerance):
     return data, spacing
 
 
-def place_frames(guide: QgsGeometry, width: float, height: float, overlap_pct: float):
+def place_frames(
+    guide: QgsGeometry,
+    width: float,
+    height: float,
+    overlap_pct: float,
+    cover: QgsGeometry = None,
+):
     """Place frames of ``width`` x ``height`` (ground units) along ``guide``.
 
     ``width`` is measured along the route. ``overlap_pct`` (0..<100) is the minimum
     overlap between neighbouring frames as a share of ``width``.
+
+    ``guide`` decides where the frames go and how they are oriented (it may be a
+    smoothed version of the real feature). ``cover`` is the line that must end up
+    inside the frames, normally the unsmoothed original; it defaults to ``guide``.
+    ``Placement.uncovered`` is measured along ``cover``.
     """
     if width <= 0 or height <= 0:
         raise PlacementError("Frame width and height must be positive.")
@@ -167,6 +178,7 @@ def place_frames(guide: QgsGeometry, width: float, height: float, overlap_pct: f
         raise PlacementError("The guide line is empty.")
     length = guide.length()
     tolerance = width * 1e-3
+    cover = cover if cover is not None else guide
 
     if length <= width:
         counts = [1]
@@ -177,7 +189,7 @@ def place_frames(guide: QgsGeometry, width: float, height: float, overlap_pct: f
 
     def attempt(count):
         data, spacing = _build(guide, length, width, height, count, tolerance)
-        gaps = uncovered_stretches(guide, [d[3] for d in data], tolerance)
+        gaps = uncovered_stretches(cover, [d[3] for d in data], tolerance)
         return data, spacing, gaps
 
     if counts is not None:

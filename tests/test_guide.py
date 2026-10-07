@@ -16,6 +16,7 @@ from strip_map_maker.core.guide import (  # noqa: E402
     chain_lines,
     reverse_line,
     single_line,
+    smooth_line,
 )
 
 
@@ -110,3 +111,17 @@ def test_single_line_rejects_multipart_and_zero_length():
         single_line(multi)
     with pytest.raises(GuideError):
         single_line(line((1, 1), (1, 1)))
+
+
+def test_smoothing_flattens_meanders_and_keeps_ends():
+    wiggly = line(*[(x, 20 * (1 if (x // 20) % 2 else -1)) for x in range(0, 400, 5)])
+    smooth = smooth_line(wiggly, window=100)
+    ys = [p.y() for p in smooth.asPolyline()[5:-5]]
+    assert max(abs(y) for y in ys) < 10  # amplitude 20 flattened
+    assert coords(smooth)[0] == pytest.approx(coords(wiggly)[0])
+    assert coords(smooth)[-1] == pytest.approx(coords(wiggly)[-1])
+
+
+def test_zero_window_leaves_line_unchanged():
+    original = line((0, 0), (10, 5), (20, 0))
+    assert coords(smooth_line(original, 0)) == coords(original)
