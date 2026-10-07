@@ -8,3 +8,9 @@ dist/
 build/
 .idea/
 .vscode/
+
+# Local tooling and QGIS test output
+.mcp.json
+*.gpkg
+*.qgz
+*.qgs
