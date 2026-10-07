@@ -46,6 +46,7 @@ class StripMapMakerPlugin:
         self.action.deleteLater()
         self.action = None
         if self.dock is not None:
+            self.dock.cleanup()
             self.iface.removeDockWidget(self.dock)
             self.dock.deleteLater()
             self.dock = None
@@ -55,6 +56,6 @@ class StripMapMakerPlugin:
 
     def run(self):
         if self.dock is None:
-            self.dock = StripMapMakerDockWidget(self.iface.mainWindow())
+            self.dock = StripMapMakerDockWidget(self.iface, self.iface.mainWindow())
             self.iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock)
         self.dock.setVisible(not self.dock.isVisible())

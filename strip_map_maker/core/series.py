@@ -52,6 +52,7 @@ class Setup:
     height_mm: float
     scale: int
     overlap_pct: float
+    smoothing_m: float = 0.0
 
     @property
     def width_m(self) -> float:
@@ -161,6 +162,7 @@ def read_setup(path) -> Setup:
             height_mm=float(values["height_mm"]),
             scale=int(float(values["scale"])),
             overlap_pct=float(values["overlap_pct"]),
+            smoothing_m=float(values.get("smoothing_m", 0)),
         )
     except KeyError as missing:
         raise SeriesError(f"Series setup is incomplete: {missing} missing") from None
