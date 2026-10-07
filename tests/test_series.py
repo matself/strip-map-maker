@@ -46,3 +46,26 @@ def test_create_and_reload_series(tmp_path):
     assert frames_layer.crs().authid() == "EPSG:3006"
     first = next(frames_layer.getFeatures(), None)
     assert first["id"] == 1 and first["from_m"] == pytest.approx(0)
+
+
+def test_layout_rotation_expression_matches_azi(tmp_path):
+    from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextUtils
+
+    from strip_map_maker.core.series import LAYOUT_ROTATION_EXPRESSION
+
+    crs = QgsCoordinateReferenceSystem("EPSG:3006")
+    guide = QgsGeometry.fromPolylineXY(
+        [QgsPointXY(500000, 6500000), QgsPointXY(500600, 6500400), QgsPointXY(501200, 6500500)]
+    )
+    setup = Setup("Bend", width_mm=280, height_mm=180, scale=1000, overlap_pct=10)
+    placement = place_frames(guide, setup.width_m, setup.height_m, setup.overlap_pct)
+    path = tmp_path / "bend.gpkg"
+    create_series(path, guide, crs, setup, placement)
+    project = QgsProject()
+    _, frames_layer = add_to_project(path, project)
+    expression = QgsExpression(LAYOUT_ROTATION_EXPRESSION)
+    for feature in frames_layer.getFeatures():
+        context = QgsExpressionContext()
+        context.appendScope(QgsExpressionContextUtils.layerScope(frames_layer))
+        context.setFeature(feature)
+        assert expression.evaluate(context) == pytest.approx((90 - feature["azi"]) % 360, abs=1e-6)

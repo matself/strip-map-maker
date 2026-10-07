@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Small shims so the same code runs on QGIS 3 (Qt5) and QGIS 4 (Qt6).
 
 Rules of thumb for the rest of the plugin:

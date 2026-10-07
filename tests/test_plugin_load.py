@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Load the plugin inside a real QGIS (skipped when QGIS is not importable)."""
 import sys
 from pathlib import Path

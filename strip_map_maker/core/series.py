@@ -38,6 +38,12 @@ FRAMES_LAYER = "frames"
 INFO_LAYER = "series_info"
 ROLE_PROPERTY = "strip_map_maker/role"
 
+# Bearing (degrees, 0 = north, clockwise) of a frame's long axis, read from the geometry so it
+# stays correct after a frame has been rotated by hand (the stored "azi" field would go stale).
+BEARING_EXPRESSION = "degrees(azimuth(point_n($geometry, 4), point_n($geometry, 1)))"
+# Rotation that makes the route run left to right in a layout map item.
+LAYOUT_ROTATION_EXPRESSION = f"(90 - {BEARING_EXPRESSION} + 360) % 360"
+
 
 class SeriesError(RuntimeError):
     """The series could not be written or read."""
@@ -189,7 +195,7 @@ def apply_default_style(layer: QgsVectorLayer):
     settings.placement = Qgis.LabelPlacement.OverPoint
     settings.dataDefinedProperties().setProperty(
         QgsPalLayerSettings.Property.LabelRotation,
-        QgsProperty.fromExpression('("azi" - 90 + 360) % 360'),
+        QgsProperty.fromExpression(f"({BEARING_EXPRESSION} - 90 + 360) % 360"),
     )
     text = QgsTextFormat()
     font = QFont("Arial", 18)

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Build dist/<module>-<version>.zip, ready for 'Install from ZIP' or plugins.qgis.org."""
 import configparser
 import zipfile

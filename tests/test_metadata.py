@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Metadata checks that do not need QGIS."""
 import configparser
 from pathlib import Path
