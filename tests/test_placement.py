@@ -16,6 +16,7 @@ from strip_map_maker.core.placement import (  # noqa: E402
     PlacementError,
     place_frames,
     rectangle,
+    reverse_placement,
     uncovered_stretches,
 )
 
@@ -175,3 +176,23 @@ def test_bends_overlap_evenly_and_never_below_request():
     assert min(overlaps) >= 10 - 0.5
     # the last pair is no longer an outlier: the leftover is shared by all overlaps
     assert max(overlaps) - min(overlaps) < 3
+
+
+def test_reverse_placement_turns_every_frame_around():
+    guide = line([(0, 0), (300, 100), (600, 0)])
+    result = place_frames(guide, 100, 60, 10)
+    before = [(f.id, f.azi, f.from_m, f.to_m, f.geometry.asWkt()) for f in result.frames]
+    reverse_placement(result, guide.length())
+    count = len(before)
+    for frame, (old_id, azi, from_m, to_m, wkt) in zip(result.frames, reversed(before)):
+        assert frame.id == count + 1 - old_id
+        assert frame.azi == pytest.approx((azi + 180) % 360)
+        assert (frame.from_m, frame.to_m) == pytest.approx(
+            (guide.length() - to_m, guide.length() - from_m)
+        )
+        # same rectangle, but the first corner is now on the other end
+        assert frame.geometry.isGeosEqual(QgsGeometry.fromWkt(wkt))
+        a = frame.geometry.asPolygon()[0]
+        bearing = math.degrees(math.atan2(a[0].x() - a[3].x(), a[0].y() - a[3].y())) % 360
+        assert bearing == pytest.approx(frame.azi, abs=1e-6)
+    assert [f.id for f in result.frames] == list(range(1, count + 1))

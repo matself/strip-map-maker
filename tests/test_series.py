@@ -67,4 +67,6 @@ def test_layout_rotation_expression_matches_azi(tmp_path):
         context = QgsExpressionContext()
         context.appendScope(QgsExpressionContextUtils.layerScope(frames_layer))
         context.setFeature(feature)
-        assert expression.evaluate(context) == pytest.approx((90 - feature["azi"]) % 360, abs=1e-6)
+        assert expression.evaluate(context) == pytest.approx(
+            (180 - feature["azi"]) % 180 - 90, abs=1e-6
+        )

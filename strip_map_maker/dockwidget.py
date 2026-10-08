@@ -28,7 +28,7 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from .core.guide import GuideError, chain_lines, single_line, smooth_line
-from .core.placement import PlacementError, place_frames
+from .core.placement import PlacementError, place_frames, reverse_placement
 from .core.series import SeriesError, Setup, add_to_project, create_series
 from .maptool import DrawGuideTool
 
@@ -282,9 +282,7 @@ class StripMapMakerDockWidget(QDockWidget):
         """Flip the numbering of the sheets on show."""
         if self._placement is None:
             return
-        count = len(self._placement.frames)
-        for frame in self._placement.frames:
-            frame.id = count + 1 - frame.id
+        reverse_placement(self._placement, self._guide.length())
         self._show_numbers(self._placement.frames)
 
     def _set_guide(self, geometry, crs, note=""):
@@ -345,9 +343,7 @@ class StripMapMakerDockWidget(QDockWidget):
             self.info_label.setText(str(error))
             return
         if self.reverse_button.isChecked():
-            count = len(placement.frames)
-            for frame in placement.frames:
-                frame.id = count + 1 - frame.id
+            reverse_placement(placement, guide.length())
         self._placement = placement
         self._guide = guide
         self._clear_preview()

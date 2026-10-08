@@ -40,8 +40,9 @@ ROLE_PROPERTY = "strip_map_maker/role"
 # Bearing (degrees, 0 = north, clockwise) of a frame's long axis, read from the geometry so it
 # stays correct after a frame has been rotated by hand (the stored "azi" field would go stale).
 BEARING_EXPRESSION = "degrees(azimuth(point_n($geometry, 4), point_n($geometry, 1)))"
-# Rotation that makes the route run left to right in a layout map item.
-LAYOUT_ROTATION_EXPRESSION = f"(90 - {BEARING_EXPRESSION} + 360) % 360"
+# Rotation (-90 <= r < 90) that makes the route run horizontally in a layout map item with
+# the map text upright: a route heading west is shown right to left, never upside down.
+LAYOUT_ROTATION_EXPRESSION = f"((180 - {BEARING_EXPRESSION}) % 180 + 180) % 180 - 90"
 
 
 class SeriesError(RuntimeError):

@@ -188,6 +188,25 @@ def _adaptive_run(guide, length, width, height, frac, tolerance):
     return data
 
 
+def reverse_placement(placement: "Placement", length: float) -> None:
+    """Renumber the frames from the other end of the guide, in place.
+
+    The rectangles stay where they are, but each one now runs the other way along the
+    route: its bearing turns 180 degrees, its corners start at the opposite side and
+    its chainage range is mirrored, so a layout that rotates a map item by the frame
+    geometry still has the route pointing the same way on every page.
+    """
+    count = len(placement.frames)
+    for frame in placement.frames:
+        ring = [QgsPointXY(p) for p in frame.geometry.asPolygon()[0][:-1]]
+        ring = ring[2:] + ring[:2]
+        frame.geometry = QgsGeometry.fromPolygonXY([ring])
+        frame.azi = (frame.azi + 180) % 360
+        frame.from_m, frame.to_m = length - frame.to_m, length - frame.from_m
+        frame.id = count + 1 - frame.id
+    placement.frames.sort(key=lambda frame: frame.id)
+
+
 def _build_adaptive(guide, length, width, height, overlap_pct, tolerance):
     """Frames spaced by their real (rotated) overlap rather than by chainage.
 

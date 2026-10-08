@@ -38,11 +38,20 @@ the geometry.
 3. Map item rotation, data-defined override:
 
 ```
-(90 - degrees(azimuth(point_n($geometry, 4), point_n($geometry, 1))) + 360) % 360
+((180 - degrees(azimuth(point_n($geometry, 4), point_n($geometry, 1)))) % 180 + 180) % 180 - 90
 ```
 
-This reads the rotation from the sheet geometry, so it stays correct after a sheet has been
-rotated by hand.
+This turns every sheet so that the route runs horizontally and the map text stays upright
+(rotation between -90 and 90 degrees). A route heading west is therefore shown running from
+right to left, not upside down. The rotation is read from the sheet geometry, so it stays
+correct after a sheet has been rotated by hand.
+
+To always have the route run from left to right on every page, even when that turns the
+map upside down, use this instead:
+
+```
+(90 - degrees(azimuth(point_n($geometry, 4), point_n($geometry, 1))) + 360) % 360
+```
 
 ## Development
 
