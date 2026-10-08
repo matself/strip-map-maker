@@ -12,7 +12,7 @@ from qgis.core import (
 )
 from qgis.gui import QgsMapCanvasItem, QgsMapLayerComboBox, QgsRubberBand
 from qgis.PyQt.QtCore import QRectF, Qt, QTimer
-from qgis.PyQt.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
+from qgis.PyQt.QtGui import QColor, QFont, QPainter, QPainterPath, QPen, QTransform
 from qgis.PyQt.QtWidgets import (
     QDockWidget,
     QDoubleSpinBox,
@@ -29,7 +29,7 @@ from qgis.PyQt.QtWidgets import (
 
 from .core.guide import GuideError, chain_lines, single_line, smooth_line
 from .core.placement import PlacementError, place_frames, reverse_placement
-from .core.series import SeriesError, Setup, add_to_project, create_series
+from .core.series import SeriesError, Setup, add_to_project, create_series, layout_rotation
 from .maptool import DrawGuideTool
 
 PREVIEW_DELAY_MS = 300
@@ -42,8 +42,9 @@ class FrameNumbers(QgsMapCanvasItem):
     def __init__(self, canvas):
         super().__init__(canvas)
         self._canvas = canvas
-        self._labels = []  # (QgsPointXY in canvas CRS, text)
+        self._labels = []  # (QgsPointXY in canvas CRS, text, rotation in degrees clockwise)
         canvas.extentsChanged.connect(self.update)
+        canvas.rotationChanged.connect(self.update)
 
     def set_labels(self, labels):
         self._labels = labels
@@ -61,12 +62,16 @@ class FrameNumbers(QgsMapCanvasItem):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         font = QFont("Arial", 16)
         font.setBold(True)
-        for point, text in self._labels:
+        for point, text, angle in self._labels:
             pos = self.toCanvasCoordinates(point)
             path = QPainterPath()
             path.addText(0, 0, font, text)
             rect = path.boundingRect()
-            path.translate(pos.x() - rect.center().x(), pos.y() - rect.center().y())
+            path.translate(-rect.center().x(), -rect.center().y())
+            turn = QTransform()
+            turn.translate(pos.x(), pos.y())
+            turn.rotate(angle + self._canvas.rotation())
+            path = turn.map(path)
             painter.setPen(QPen(QColor(255, 255, 255), 4))
             painter.drawPath(path)
             painter.setPen(Qt.PenStyle.NoPen)
@@ -322,7 +327,14 @@ class StripMapMakerDockWidget(QDockWidget):
             self._crs, self.canvas.mapSettings().destinationCrs(), QgsProject.instance()
         )
         self._numbers.set_labels(
-            [(to_canvas.transform(QgsPointXY(f.x, f.y)), str(f.id)) for f in frames]
+            [
+                (
+                    to_canvas.transform(QgsPointXY(f.x, f.y)),
+                    str(f.id),
+                    (360 - layout_rotation(f.azi)) % 360,  # as the saved sheet numbers
+                )
+                for f in frames
+            ]
         )
 
     def _update_preview(self):

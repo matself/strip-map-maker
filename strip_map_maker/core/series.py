@@ -14,7 +14,6 @@ from qgis.core import (
     Qgis,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransformContext,
-    QgsDefaultValue,
     QgsFeature,
     QgsField,
     QgsFillSymbol,
@@ -49,9 +48,19 @@ LAYOUT_ROTATION_EXPRESSION = f"((180 - {BEARING_EXPRESSION}) % 180 + 180) % 180 
 LABEL_ROTATION_EXPRESSION = f"(360 - ({LAYOUT_ROTATION_EXPRESSION})) % 360"
 
 
+# Stored decimals: 0.01 degrees is 5 cm over a 280 m wide sheet; lengths are in whole centimetres.
+ANGLE_DECIMALS = 2
+LENGTH_DECIMALS = 2
+
+
 def layout_rotation(azi: float) -> float:
     """Map item rotation (-90 <= r < 90) for a frame with bearing ``azi``; see above."""
     return (180 - azi) % 180 - 90
+
+
+def _rounded_rotation(azi: float) -> float:
+    rotation = round(layout_rotation(azi), ANGLE_DECIMALS)
+    return rotation - 180 if rotation >= 90 else rotation
 
 
 class SeriesError(RuntimeError):
@@ -131,12 +140,12 @@ def create_series(path, crs: QgsCoordinateReferenceSystem, setup: Setup, placeme
         feature.setAttributes(
             [
                 frame.id,
-                frame.azi,
-                frame.x,
-                frame.y,
-                frame.from_m,
-                frame.to_m,
-                layout_rotation(frame.azi),
+                round(frame.azi, ANGLE_DECIMALS) % 360,
+                round(frame.x, LENGTH_DECIMALS),
+                round(frame.y, LENGTH_DECIMALS),
+                round(frame.from_m, LENGTH_DECIMALS),
+                round(frame.to_m, LENGTH_DECIMALS),
+                _rounded_rotation(frame.azi),
             ]
         )
         feature.setGeometry(frame.geometry)
@@ -231,13 +240,8 @@ def add_to_project(path, project: QgsProject = None):
     frames = _open(path, FRAMES_LAYER)
     frames.setName(f"{setup.name} - frames")
     frames.setCustomProperty(ROLE_PROPERTY, "frames")
-    # keep the stored rotation right when a sheet is turned or moved by hand
-    frames.setDefaultValueDefinition(
-        frames.fields().indexFromName("rotation"),
-        QgsDefaultValue(LAYOUT_ROTATION_EXPRESSION, True),
-    )
     apply_default_style(frames)
     project.addMapLayer(frames, False)
-    group = project.layerTreeRoot().addGroup(f"{setup.name} (1:{setup.scale})")
+    group = project.layerTreeRoot().insertGroup(0, f"{setup.name} (1:{setup.scale})")  # on top
     group.addLayer(frames)
     return frames

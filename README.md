@@ -40,8 +40,12 @@ the geometry.
 `rotation` turns the sheet so that its long edge runs horizontally and the sheet number reads
 upright, as it does on the overview map: that is the sheet's "up". Rotation is between -90 and
 90 degrees, so a route heading west is shown running from right to left, not upside down.
-The field is a default value that is recalculated from the sheet geometry when a sheet is
-turned or moved by hand.
+The field is written when the series is saved. If you turn a sheet by hand afterwards, use
+this expression for the map rotation instead, which is read from the sheet geometry:
+
+```
+((180 - degrees(azimuth(point_n($geometry, 4), point_n($geometry, 1)))) % 180 + 180) % 180 - 90
+```
 
 To have the route run from left to right on every page, even when that turns the map upside
 down, use this expression instead:
