@@ -105,14 +105,6 @@ def chain_lines(geometries, tolerance: float = 1.0) -> ChainResult:
     return ChainResult(QgsGeometry.fromPolylineXY(chain), pieces, gaps)
 
 
-def reverse_line(geometry: QgsGeometry) -> QgsGeometry:
-    """Return the guide line with its direction reversed (page 1 moves to the other end)."""
-    parts = _parts(geometry)
-    if len(parts) != 1:
-        raise GuideError("A guide line must be a single part.")
-    return QgsGeometry.fromPolylineXY(parts[0][::-1])
-
-
 def single_line(geometry: QgsGeometry) -> QgsGeometry:
     """Validate a drawn or stored line as a guide and return it as a single 2D part."""
     parts = _parts(geometry)

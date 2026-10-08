@@ -14,7 +14,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from strip_map_maker.core.guide import (  # noqa: E402
     GuideError,
     chain_lines,
-    reverse_line,
     single_line,
     smooth_line,
 )
@@ -97,10 +96,6 @@ def test_empty_and_non_line_input():
         chain_lines([])
     with pytest.raises(GuideError, match="line"):
         chain_lines([QgsGeometry.fromPointXY(QgsPointXY(0, 0))])
-
-
-def test_reverse_line():
-    assert coords(reverse_line(line((0, 0), (5, 0), (5, 5)))) == [(5, 5), (5, 0), (0, 0)]
 
 
 def test_single_line_rejects_multipart_and_zero_length():

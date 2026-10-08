@@ -2,12 +2,14 @@
 """Place map frames along a guide line.
 
 Every frame is a rectangle of fixed ground size. The first frame starts at the
-beginning of the guide and the last one ends at its end. In between the frames are
-spaced equally, so the leftover length is spread evenly over all overlaps (the
-overlap is therefore never smaller than requested). Frames are oriented along the
-chord of the route inside the frame and centred on the route sideways, so curves
-stay inside the frame. If a curve is too tight for the requested spacing, more
-frames are added until the whole guide is covered.
+beginning of the guide and the last one ends at its end. In between, each frame is
+pushed forward until it overlaps the previous one by the requested share of its area,
+measured on the rotated rectangles, so bends do not overlap more than straight
+stretches. The leftover length is then shared evenly by raising the overlap a little
+(it is never smaller than requested). Frames are oriented along the chord of the
+route inside the frame and centred on the route sideways, so curves stay inside the
+frame. If the adaptive spacing leaves part of the route uncovered, equally spaced
+frames are used instead, with more of them added until the whole guide is covered.
 
 All lengths are in map units, so the guide must be in a projected CRS in metres.
 """

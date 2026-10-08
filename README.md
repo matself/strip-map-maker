@@ -8,15 +8,15 @@ Compatible with QGIS 3.34 up to 4.99 (Qt5 and Qt6).
 
 ## Usage
 
-1. Open the **Strip Map Maker** panel (toolbar icon or *Plugins* menu).
-2. **Guide line:** select one or more lines in a line layer and press *Use selected lines*
-   (several lines are chained into one), or press *Draw line on map*. The layer or project must
-   use a projected CRS in metres.
-3. **Sheets:** set sheet width and height in mm, scale, overlap and, if wanted, smoothing.
-   The preview updates as you type. Smoothing (an averaging length in metres) flattens small
-   meanders so the sheets follow the general direction of the line; the original line is still
-   what has to fit inside the sheets.
-4. **Save series...** saves a GeoPackage with two tables and adds the sheets to the project. The
+1. Open the **Strip Map Maker** panel (toolbar icon or *Plugins* menu) and set the **Sheets**:
+   width and height in mm, scale and overlap. The preview updates as you type.
+2. **Guide line:** select one or more lines in a line layer (several lines are chained into
+   one; ends up to *Join gaps up to* apart are bridged), or press *Draw line on map* (right click,
+   double click, Enter or the *Finish line* button ends the line). The layer or project must use
+   a projected CRS in metres. *Smoothing* (an averaging length in metres) flattens small meanders
+   so the sheets follow the general direction of the line; the original line is still what has
+   to fit inside the sheets. *Reverse sheet numbering* numbers the sheets from the other end.
+3. **Save series...** saves a GeoPackage with two tables and adds the sheets to the project. The
    guide line itself is not saved:
 
    | Table | Content |

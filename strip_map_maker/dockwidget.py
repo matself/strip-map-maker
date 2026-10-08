@@ -130,13 +130,13 @@ class StripMapMakerDockWidget(QDockWidget):
         setup_form.addRow("Height:", self.height_spin)
         setup_form.addRow("Scale:", self.scale_spin)
         setup_form.addRow("Overlap:", self.overlap_spin)
-        self.reverse_check = QPushButton("Reverse sheet numbering")
-        self.reverse_check.setCheckable(True)
-        self.reverse_check.setToolTip(
+        self.reverse_button = QPushButton("Reverse sheet numbering")
+        self.reverse_button.setCheckable(True)
+        self.reverse_button.setToolTip(
             "Number the sheets from the other end of the guide line. Renumbers the sheets "
             "shown; their positions stay."
         )
-        self.reverse_check.toggled.connect(self._reverse_numbers)
+        self.reverse_button.toggled.connect(self._reverse_numbers)
         layout.addWidget(setup_box)
 
         guide_box = QGroupBox("2. Guide line")
@@ -171,7 +171,7 @@ class StripMapMakerDockWidget(QDockWidget):
         clear_button = QPushButton("Clear and start over")
         clear_button.clicked.connect(self._reset)
         guide_form.addRow(self.guide_label)
-        guide_form.addRow(self.reverse_check)
+        guide_form.addRow(self.reverse_button)
         guide_form.addRow(clear_button)
         layout.addWidget(guide_box)
 
@@ -179,15 +179,15 @@ class StripMapMakerDockWidget(QDockWidget):
         self.info_label.setWordWrap(True)
         layout.addWidget(self.info_label)
 
-        create_box = QGroupBox("3. Save")
-        create_form = QFormLayout(create_box)
+        save_box = QGroupBox("3. Save")
+        save_form = QFormLayout(save_box)
         self.name_edit = QLineEdit("Strip map")
         self.create_button = QPushButton("Save series...")
         self.create_button.setEnabled(False)
         self.create_button.clicked.connect(self._create)
-        create_form.addRow("Name:", self.name_edit)
-        create_form.addRow(self.create_button)
-        layout.addWidget(create_box)
+        save_form.addRow("Name:", self.name_edit)
+        save_form.addRow(self.create_button)
+        layout.addWidget(save_box)
 
         layout.addStretch()
         self.setWidget(content)
@@ -248,8 +248,8 @@ class StripMapMakerDockWidget(QDockWidget):
             self._message(str(error))
             return
         note = f" ({result.pieces} lines joined)" if result.pieces > 1 else ""
-        self._set_guide(result.geometry, layer.crs(), note)
-        self._from_selection = self._source is not None
+        if self._set_guide(result.geometry, layer.crs(), note):
+            self._from_selection = True
 
     def _start_drawing(self):
         self._previous_tool = self.canvas.mapTool()
@@ -267,8 +267,8 @@ class StripMapMakerDockWidget(QDockWidget):
 
     def _drawn(self, geometry):
         self._stop_drawing()
-        self._set_guide(geometry, self.canvas.mapSettings().destinationCrs(), " (drawn)")
-        self._from_selection = False
+        if self._set_guide(geometry, self.canvas.mapSettings().destinationCrs(), " (drawn)"):
+            self._from_selection = False
 
     def _tolerance(self):
         return self.gap_spin.value()
@@ -288,20 +288,22 @@ class StripMapMakerDockWidget(QDockWidget):
         self._show_numbers(self._placement.frames)
 
     def _set_guide(self, geometry, crs, note=""):
+        """Make ``geometry`` the guide; returns False (and says why) if it cannot be used."""
         if crs.isGeographic():
             self._message(
                 "The guide is in a geographic CRS (degrees). Reproject the layer, or set the "
                 "project to a projected CRS in metres, and try again."
             )
-            return
+            return False
         try:
             self._source = single_line(geometry)
         except GuideError as error:
             self._message(str(error))
-            return
+            return False
         self._crs = crs
         self.guide_label.setText(f"Guide: {self._source.length():,.0f} m{note}")
         self._schedule_preview()
+        return True
 
     # ---- preview ------------------------------------------------------------------------
 
@@ -342,7 +344,7 @@ class StripMapMakerDockWidget(QDockWidget):
             self._clear_preview()
             self.info_label.setText(str(error))
             return
-        if self.reverse_check.isChecked():
+        if self.reverse_button.isChecked():
             count = len(placement.frames)
             for frame in placement.frames:
                 frame.id = count + 1 - frame.id
@@ -417,6 +419,11 @@ class StripMapMakerDockWidget(QDockWidget):
         self.canvas.scene().removeItem(self._frames_band)
         self.canvas.scene().removeItem(self._guide_band)
         self.canvas.scene().removeItem(self._numbers)
+
+    def showEvent(self, event):  # noqa: N802
+        super().showEvent(event)
+        if self._source is not None:
+            self._schedule_preview()  # the preview was cleared when the panel was closed
 
     def closeEvent(self, event):  # noqa: N802
         self._clear_preview()

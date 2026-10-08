@@ -160,3 +160,18 @@ def test_cover_line_decides_what_must_be_covered():
     covered = place_frames(straight, 100, 40, 10, cover=river)
     assert len(covered.frames) >= len(plain.frames)
     assert isinstance(covered.uncovered, list)
+
+
+def test_bends_overlap_evenly_and_never_below_request():
+    guide = line([(60 * math.sin(i / 6), i * 40) for i in range(60)])
+    result = place_frames(guide, 280, 180, 10)
+    assert not result.uncovered
+    frames = result.frames
+    area = frames[0].geometry.area()
+    overlaps = [
+        frames[i].geometry.intersection(frames[i + 1].geometry).area() / area * 100
+        for i in range(len(frames) - 1)
+    ]
+    assert min(overlaps) >= 10 - 0.5
+    # the last pair is no longer an outlier: the leftover is shared by all overlaps
+    assert max(overlaps) - min(overlaps) < 3
