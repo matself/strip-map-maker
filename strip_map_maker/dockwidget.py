@@ -14,6 +14,8 @@ from qgis.gui import QgsMapCanvasItem, QgsMapLayerComboBox, QgsRubberBand
 from qgis.PyQt.QtCore import QRectF, Qt, QTimer
 from qgis.PyQt.QtGui import QColor, QFont, QPainter, QPainterPath, QPen, QTransform
 from qgis.PyQt.QtWidgets import (
+    QCheckBox,
+    QComboBox,
     QDockWidget,
     QDoubleSpinBox,
     QFileDialog,
@@ -23,17 +25,35 @@ from qgis.PyQt.QtWidgets import (
     QLineEdit,
     QPushButton,
     QSpinBox,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from .core.atlas import (
+    MIN_BAND,
+    AtlasError,
+    AtlasOptions,
+    build_atlas,
+    page_band,
+)
 from .core.guide import GuideError, chain_lines, single_line, smooth_line
 from .core.placement import PlacementError, place_frames, reverse_placement
-from .core.series import SeriesError, Setup, add_to_project, create_series, layout_rotation
+from .core.series import (
+    ROLE_PROPERTY,
+    SeriesError,
+    Setup,
+    add_to_project,
+    create_series,
+    layout_rotation,
+    read_setup,
+)
 from .maptool import DrawGuideTool
 
 PREVIEW_DELAY_MS = 300
 DEFAULT_GAP_M = 5.0  # gaps between selected lines that are bridged
+# Sheet sizes (mm) that fill a landscape page and leave a band below for the notes.
+PAGE_PRESETS = {"A4 landscape": (277, 150), "A3 landscape": (400, 220)}
 
 
 class FrameNumbers(QgsMapCanvasItem):
@@ -119,18 +139,29 @@ class StripMapMakerDockWidget(QDockWidget):
     # ---- UI -----------------------------------------------------------------------------
 
     def _build_ui(self):
-        content = QWidget(self)
-        layout = QVBoxLayout(content)
+        tabs = QTabWidget(self)
+        series_page = QWidget()
+        layout = QVBoxLayout(series_page)
 
         setup_box = QGroupBox("1. Sheets")
         setup_form = QFormLayout(setup_box)
         self.width_spin = self._spin(QDoubleSpinBox(), 1, 10000, 280, " mm")
         self.height_spin = self._spin(QDoubleSpinBox(), 1, 10000, 180, " mm")
+        for spin in (self.width_spin, self.height_spin):
+            spin.valueChanged.connect(self._sheet_size_edited)
         self.scale_spin = self._spin(QSpinBox(), 1, 10000000, 1000, "", "1 : ")
         self.scale_spin.setSingleStep(500)
         self.overlap_spin = self._spin(QDoubleSpinBox(), 0, 90, 10, " %")
         self.smooth_spin = self._spin(QDoubleSpinBox(), 0, 100000, 0, " m")
         self.smooth_spin.setToolTip("Averaging length; 0 follows the line exactly.")
+        self.preset_combo = QComboBox()
+        self.preset_combo.addItems(["Custom", *PAGE_PRESETS])
+        self.preset_combo.setToolTip(
+            "Sheet sizes that fill the page and leave room below for the sheet number, "
+            "scale bar and overview map in the atlas."
+        )
+        self.preset_combo.activated.connect(self._apply_preset)
+        setup_form.addRow("Fit to page:", self.preset_combo)
         setup_form.addRow("Width:", self.width_spin)
         setup_form.addRow("Height:", self.height_spin)
         setup_form.addRow("Scale:", self.scale_spin)
@@ -195,7 +226,64 @@ class StripMapMakerDockWidget(QDockWidget):
         layout.addWidget(save_box)
 
         layout.addStretch()
-        self.setWidget(content)
+        tabs.addTab(series_page, "Series")
+        tabs.addTab(self._build_atlas_tab(), "Atlas")
+        tabs.currentChanged.connect(self._refresh_series_list)
+        self.setWidget(tabs)
+
+    def _build_atlas_tab(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        box = QGroupBox("Atlas from a saved series")
+        form = QFormLayout(box)
+        self.series_combo = QComboBox()
+        self.series_combo.currentIndexChanged.connect(self._atlas_check)
+        open_button = QPushButton("Open series file...")
+        open_button.clicked.connect(self._open_series)
+        self.page_combo = QComboBox()
+        self.page_combo.addItems(["A4", "A3"])
+        self.page_combo.currentIndexChanged.connect(self._atlas_check)
+        self.overview_check = QCheckBox("Overview map")
+        self.overview_check.setChecked(True)
+        self.scalebar_check = QCheckBox("Scale bar")
+        self.scalebar_check.setChecked(True)
+        self.arrow_check = QCheckBox("North arrow")
+        self.arrow_check.setChecked(True)
+        self.layout_name_edit = QLineEdit()
+        self.layout_name_edit.setPlaceholderText("Layout name (optional)")
+        self.atlas_info = QLabel("")
+        self.atlas_info.setWordWrap(True)
+        self.atlas_button = QPushButton("Create atlas")
+        self.atlas_button.clicked.connect(self._create_atlas)
+        form.addRow("Series:", self.series_combo)
+        form.addRow(open_button)
+        form.addRow("Page (landscape):", self.page_combo)
+        form.addRow(self.overview_check)
+        form.addRow(self.scalebar_check)
+        form.addRow(self.arrow_check)
+        form.addRow("Name:", self.layout_name_edit)
+        form.addRow(self.atlas_info)
+        form.addRow(self.atlas_button)
+        layout.addWidget(box)
+        layout.addStretch()
+        QgsProject.instance().layersAdded.connect(self._refresh_series_list)
+        QgsProject.instance().layersRemoved.connect(self._refresh_series_list)
+        self._refresh_series_list()
+        return page
+
+    def _apply_preset(self, *_):
+        size = PAGE_PRESETS.get(self.preset_combo.currentText())
+        if size is None:
+            return
+        for spin, value in zip((self.width_spin, self.height_spin), size):
+            spin.blockSignals(True)
+            spin.setValue(value)
+            spin.blockSignals(False)
+        self._schedule_preview()
+
+    def _sheet_size_edited(self, *_):
+        self.preset_combo.setCurrentIndex(0)  # back to "Custom"
+        self._schedule_preview()
 
     def _spin(self, spin, low, high, value, suffix="", prefix=""):
         spin.setRange(low, high)
@@ -206,6 +294,88 @@ class StripMapMakerDockWidget(QDockWidget):
             spin.setPrefix(prefix)
         spin.valueChanged.connect(self._schedule_preview)
         return spin
+
+    # ---- atlas --------------------------------------------------------------------------
+
+    def _series_layers(self):
+        return [
+            layer
+            for layer in QgsProject.instance().mapLayers().values()
+            if layer.customProperty(ROLE_PROPERTY) == "frames"
+        ]
+
+    def _refresh_series_list(self, *_):
+        current = self.series_combo.currentData()
+        self.series_combo.blockSignals(True)
+        self.series_combo.clear()
+        for layer in self._series_layers():
+            self.series_combo.addItem(layer.name(), layer.id())
+        index = self.series_combo.findData(current)
+        self.series_combo.setCurrentIndex(max(index, 0))
+        self.series_combo.blockSignals(False)
+        self._atlas_check()
+
+    def _open_series(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Open series", "", "GeoPackage (*.gpkg)")
+        if not path:
+            return
+        try:
+            layer = add_to_project(path, QgsProject.instance())
+        except SeriesError as error:
+            self._message(str(error))
+            return
+        self._refresh_series_list()
+        self.series_combo.setCurrentIndex(self.series_combo.findData(layer.id()))
+
+    def _selected_series(self):
+        """(layer, setup) of the chosen series, or (None, None)."""
+        layer = QgsProject.instance().mapLayer(self.series_combo.currentData() or "")
+        if layer is None:
+            return None, None
+        try:
+            return layer, read_setup(layer.source().split("|")[0])
+        except SeriesError as error:
+            self._message(str(error))
+            return None, None
+
+    def _atlas_check(self, *_):
+        """Say whether the sheets fit the chosen page; enable the button accordingly."""
+        self.atlas_button.setEnabled(False)
+        layer, setup = self._selected_series()
+        if layer is None:
+            self.atlas_info.setText("No series in the project. Save one, or open a series file.")
+            return
+        text = f"Sheets {setup.width_mm:g} x {setup.height_mm:g} mm, scale 1:{setup.scale}."
+        try:
+            band = page_band(self.page_combo.currentText(), setup)
+        except AtlasError as error:
+            self.atlas_info.setText(f"{text}\n{error}")
+            return
+        if band < MIN_BAND:
+            text += f"\nOnly {band:.0f} mm is left under the map: no room for the notes."
+        else:
+            text += f"\n{band:.0f} mm is left under the map for the notes."
+        self.atlas_info.setText(text)
+        self.atlas_button.setEnabled(True)
+
+    def _create_atlas(self):
+        layer, setup = self._selected_series()
+        if layer is None:
+            return
+        options = AtlasOptions(
+            page=self.page_combo.currentText(),
+            overview=self.overview_check.isChecked(),
+            scale_bar=self.scalebar_check.isChecked(),
+            north_arrow=self.arrow_check.isChecked(),
+            name=self.layout_name_edit.text().strip(),
+        )
+        try:
+            layout = build_atlas(QgsProject.instance(), layer, setup, options)
+        except AtlasError as error:
+            self._message(str(error))
+            return
+        self.atlas_info.setText(f"Created the layout '{layout.name()}'.")
+        self.iface.openLayoutDesigner(layout)
 
     # ---- guide input --------------------------------------------------------------------
 

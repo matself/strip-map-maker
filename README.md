@@ -30,7 +30,23 @@ is never smaller than requested (the last sheet may overlap more). Sheets that d
 particular stretch can be moved or rotated with QGIS's own editing tools; the sheet label follows
 the geometry.
 
-## Using the sheets in a print layout
+## Making an atlas
+
+Open the **Atlas** tab, choose a saved series (from the project, or *Open series file...*) and a
+landscape page, A4 or A3, and press **Create atlas**. The sheet size and scale are read from the
+series, so nothing has to be typed again. The layout gets:
+
+- a map item the size of a sheet, at the series scale, turned by the `rotation` field of each sheet;
+- under the map: "Sheet n of N", the scale, a scale bar, a north arrow and an overview map that
+  marks the sheet being shown (each can be switched off);
+- an atlas over the sheets, in `id` order.
+
+The map shows the layers that are visible in the project when the layout is made. The sheet
+must fit the page with room left for the notes: on the *Series* tab, *Fit to page* sets a sheet
+size that does (277 x 150 mm for A4, 400 x 220 mm for A3). A sheet that fills the whole page is
+reported as not fitting.
+
+## Doing it by hand in a print layout
 
 1. Add a map item with the same size as the sheet and set the scale.
 2. *Atlas* panel: coverage layer = `frames`, sort by `id`. In the map item tick
