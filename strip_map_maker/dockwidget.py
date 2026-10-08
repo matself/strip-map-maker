@@ -5,13 +5,16 @@ from pathlib import Path
 from qgis.core import (
     Qgis,
     QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
+    QgsPointXY,
     QgsProject,
     QgsVectorLayer,
 )
-from qgis.gui import QgsMapLayerComboBox, QgsRubberBand
-from qgis.PyQt.QtCore import QTimer
-from qgis.PyQt.QtGui import QColor
+from qgis.gui import QgsMapCanvasItem, QgsMapLayerComboBox, QgsRubberBand
+from qgis.PyQt.QtCore import QRectF, Qt, QTimer
+from qgis.PyQt.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
 from qgis.PyQt.QtWidgets import (
+    QCheckBox,
     QDockWidget,
     QDoubleSpinBox,
     QFileDialog,
@@ -31,6 +34,44 @@ from .core.series import SeriesError, Setup, add_to_project, create_series
 from .maptool import DrawGuideTool
 
 PREVIEW_DELAY_MS = 300
+
+
+class FrameNumbers(QgsMapCanvasItem):
+    """Draws the sheet numbers of the preview at the frame centres."""
+
+    def __init__(self, canvas):
+        super().__init__(canvas)
+        self._canvas = canvas
+        self._labels = []  # (QgsPointXY in canvas CRS, text)
+        canvas.extentsChanged.connect(self.update)
+
+    def set_labels(self, labels):
+        self._labels = labels
+        self.update()
+
+    def boundingRect(self):  # noqa: N802
+        return QRectF(0, 0, self._canvas.width(), self._canvas.height())
+
+    def updatePosition(self):  # noqa: N802
+        self.update()
+
+    def paint(self, painter, option=None, widget=None):
+        if not self._labels:
+            return
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        font = QFont("Arial", 16)
+        font.setBold(True)
+        for point, text in self._labels:
+            pos = self.toCanvasCoordinates(point)
+            path = QPainterPath()
+            path.addText(0, 0, font, text)
+            rect = path.boundingRect()
+            path.translate(pos.x() - rect.center().x(), pos.y() - rect.center().y())
+            painter.setPen(QPen(QColor(255, 255, 255), 4))
+            painter.drawPath(path)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(20, 40, 120))
+            painter.drawPath(path)
 
 
 class StripMapMakerDockWidget(QDockWidget):
@@ -56,6 +97,7 @@ class StripMapMakerDockWidget(QDockWidget):
         self._guide_band = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
         self._guide_band.setColor(QColor(220, 30, 30))
         self._guide_band.setWidth(2)
+        self._numbers = FrameNumbers(self.canvas)
 
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
@@ -103,6 +145,10 @@ class StripMapMakerDockWidget(QDockWidget):
         setup_form.addRow("Scale:", self.scale_spin)
         setup_form.addRow("Overlap:", self.overlap_spin)
         setup_form.addRow("Smoothing:", self.smooth_spin)
+        self.reverse_check = QCheckBox("Reverse sheet numbering")
+        self.reverse_check.setToolTip("Number the sheets from the other end of the guide line.")
+        self.reverse_check.toggled.connect(self._schedule_preview)
+        setup_form.addRow(self.reverse_check)
         layout.addWidget(setup_box)
 
         self.info_label = QLabel("")
@@ -198,6 +244,15 @@ class StripMapMakerDockWidget(QDockWidget):
     def _clear_preview(self):
         self._frames_band.reset(Qgis.GeometryType.Polygon)
         self._guide_band.reset(Qgis.GeometryType.Line)
+        self._numbers.set_labels([])
+
+    def _show_numbers(self, frames):
+        to_canvas = QgsCoordinateTransform(
+            self._crs, self.canvas.mapSettings().destinationCrs(), QgsProject.instance()
+        )
+        self._numbers.set_labels(
+            [(to_canvas.transform(QgsPointXY(f.x, f.y)), str(f.id)) for f in frames]
+        )
 
     def _update_preview(self):
         self._placement = None
@@ -216,11 +271,16 @@ class StripMapMakerDockWidget(QDockWidget):
             self._clear_preview()
             self.info_label.setText(str(error))
             return
+        if self.reverse_check.isChecked():
+            count = len(placement.frames)
+            for frame in placement.frames:
+                frame.id = count + 1 - frame.id
         self._placement = placement
         self._guide = guide
         self._clear_preview()
         for frame in placement.frames:
             self._frames_band.addGeometry(frame.geometry, self._crs)
+        self._show_numbers(placement.frames)
         self._guide_band.setToGeometry(guide, self._crs)
         text += f"\n{len(placement.frames)} sheets, overlap {placement.overlap_pct:.1f} %."
         if placement.uncovered:
@@ -284,6 +344,7 @@ class StripMapMakerDockWidget(QDockWidget):
         self._clear_preview()
         self.canvas.scene().removeItem(self._frames_band)
         self.canvas.scene().removeItem(self._guide_band)
+        self.canvas.scene().removeItem(self._numbers)
 
     def closeEvent(self, event):  # noqa: N802
         self._clear_preview()

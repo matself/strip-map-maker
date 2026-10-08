@@ -153,6 +153,46 @@ def _build(guide, length, width, height, count, tolerance):
     return data, spacing
 
 
+def _build_adaptive(guide, length, width, height, overlap_pct, tolerance):
+    """Frames spaced by their real (rotated) overlap rather than by chainage.
+
+    On a bend the chord-oriented frames overlap more than the arc spacing suggests,
+    so each frame is pushed forward until its overlap with the previous one is the
+    requested share of the frame area. Returns (frames_data, mean_spacing).
+    """
+    frac = overlap_pct / 100
+    area = width * height
+    first, last = width / 2, length - width / 2
+    data = [_end_frame(guide, _point(guide, 0.0), first, -1, width, height, length, tolerance)]
+    centre = first
+    limit = int(length / (width * max(1 - frac, 0.05))) * MAX_EXTRA_FACTOR + 8
+    while centre < last - tolerance and len(data) < limit:
+        prev = data[-1][3]
+        lo, hi = centre, min(centre + width, last)
+        if hi - lo <= tolerance:
+            break
+        trial = _frame_at(guide, hi, width, height, length)
+        if prev.intersection(trial[3]).area() > frac * area:
+            nxt = trial  # even the farthest step overlaps more than asked; take it
+        else:
+            for _ in range(24):
+                mid = (lo + hi) / 2
+                trial = _frame_at(guide, mid, width, height, length)
+                if prev.intersection(trial[3]).area() > frac * area:
+                    lo = mid
+                else:
+                    hi = mid
+            hi = max(hi, centre + width * 0.02)
+            nxt = _frame_at(guide, hi, width, height, length)
+        centre = hi
+        data.append(nxt)
+    data[-1] = _end_frame(
+        guide, _point(guide, length), last, 1, width, height, length, tolerance
+    )
+    spacing = (last - first) / (len(data) - 1) if len(data) > 1 else 0.0
+    return data, spacing
+
+
 def place_frames(
     guide: QgsGeometry,
     width: float,
@@ -192,7 +232,16 @@ def place_frames(
         gaps = uncovered_stretches(cover, [d[3] for d in data], tolerance)
         return data, spacing, gaps
 
-    if counts is not None:
+    adaptive = None
+    if counts is None:
+        data, spacing = _build_adaptive(guide, length, width, height, overlap_pct, tolerance)
+        gaps = uncovered_stretches(cover, [d[3] for d in data], tolerance)
+        if not gaps and len(data) >= 2:
+            adaptive = (data, spacing, gaps)
+
+    if adaptive is not None:
+        best = adaptive
+    elif counts is not None:
         best = attempt(1)
     else:
         best = attempt(nominal)
