@@ -14,7 +14,6 @@ from qgis.gui import QgsMapCanvasItem, QgsMapLayerComboBox, QgsRubberBand
 from qgis.PyQt.QtCore import QRectF, Qt, QTimer
 from qgis.PyQt.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
 from qgis.PyQt.QtWidgets import (
-    QCheckBox,
     QDockWidget,
     QDoubleSpinBox,
     QFileDialog,
@@ -34,6 +33,7 @@ from .core.series import SeriesError, Setup, add_to_project, create_series
 from .maptool import DrawGuideTool
 
 PREVIEW_DELAY_MS = 300
+DEFAULT_GAP_M = 5.0  # gaps between selected lines that are bridged
 
 
 class FrameNumbers(QgsMapCanvasItem):
@@ -82,6 +82,7 @@ class StripMapMakerDockWidget(QDockWidget):
         self.canvas = iface.mapCanvas()
 
         self._source = None  # the guide as chosen (unsmoothed)
+        self._from_selection = False
         self._crs = QgsCoordinateReferenceSystem()
         self._placement = None
         self._guide = None  # the smoothed guide the frames follow
@@ -129,9 +130,13 @@ class StripMapMakerDockWidget(QDockWidget):
         setup_form.addRow("Height:", self.height_spin)
         setup_form.addRow("Scale:", self.scale_spin)
         setup_form.addRow("Overlap:", self.overlap_spin)
-        self.reverse_check = QCheckBox("Reverse sheet numbering")
-        self.reverse_check.setToolTip("Number the sheets from the other end of the guide line.")
-        self.reverse_check.toggled.connect(self._schedule_preview)
+        self.reverse_check = QPushButton("Reverse sheet numbering")
+        self.reverse_check.setCheckable(True)
+        self.reverse_check.setToolTip(
+            "Number the sheets from the other end of the guide line. Renumbers the sheets "
+            "shown; their positions stay."
+        )
+        self.reverse_check.toggled.connect(self._reverse_numbers)
         setup_form.addRow(self.reverse_check)
         layout.addWidget(setup_box)
 
@@ -147,6 +152,17 @@ class StripMapMakerDockWidget(QDockWidget):
         self.guide_label.setWordWrap(True)
         guide_form.addRow("Layer:", self.layer_combo)
         guide_form.addRow("Smoothing:", self.smooth_spin)
+        self.gap_spin = QDoubleSpinBox()
+        self.gap_spin.setRange(0, 10000)
+        self.gap_spin.setDecimals(1)
+        self.gap_spin.setValue(DEFAULT_GAP_M)
+        self.gap_spin.setSuffix(" m")
+        self.gap_spin.setToolTip(
+            "Selected lines whose ends are this close are joined with a straight segment, "
+            "so small digitising gaps do not stop the route."
+        )
+        self.gap_spin.valueChanged.connect(self._gap_changed)
+        guide_form.addRow("Join gaps up to:", self.gap_spin)
         guide_form.addRow(use_selected)
         guide_form.addRow(self.draw_button)
         self.finish_button = QPushButton("Finish line")
@@ -233,6 +249,7 @@ class StripMapMakerDockWidget(QDockWidget):
             return
         note = f" ({result.pieces} lines joined)" if result.pieces > 1 else ""
         self._set_guide(result.geometry, layer.crs(), note)
+        self._from_selection = self._source is not None
 
     def _start_drawing(self):
         self._previous_tool = self.canvas.mapTool()
@@ -251,9 +268,24 @@ class StripMapMakerDockWidget(QDockWidget):
     def _drawn(self, geometry):
         self._stop_drawing()
         self._set_guide(geometry, self.canvas.mapSettings().destinationCrs(), " (drawn)")
+        self._from_selection = False
 
     def _tolerance(self):
-        return 1.0 if not self._crs.isGeographic() else 1e-5
+        return self.gap_spin.value()
+
+    def _gap_changed(self, *_):
+        """Rebuild the guide from the selection when the gap tolerance changes."""
+        if self._from_selection:
+            self._use_selected(quiet=True)
+
+    def _reverse_numbers(self, *_):
+        """Flip the numbering of the sheets on show."""
+        if self._placement is None:
+            return
+        count = len(self._placement.frames)
+        for frame in self._placement.frames:
+            frame.id = count + 1 - frame.id
+        self._show_numbers(self._placement.frames)
 
     def _set_guide(self, geometry, crs, note=""):
         if crs.isGeographic():
@@ -364,6 +396,7 @@ class StripMapMakerDockWidget(QDockWidget):
             self._stop_drawing()
         self._clear_preview()
         self._source = None
+        self._from_selection = False
         self._guide = None
         self._placement = None
         self.create_button.setEnabled(False)
