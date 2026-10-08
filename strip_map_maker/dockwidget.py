@@ -137,7 +137,6 @@ class StripMapMakerDockWidget(QDockWidget):
             "shown; their positions stay."
         )
         self.reverse_check.toggled.connect(self._reverse_numbers)
-        setup_form.addRow(self.reverse_check)
         layout.addWidget(setup_box)
 
         guide_box = QGroupBox("2. Guide line")
@@ -172,6 +171,7 @@ class StripMapMakerDockWidget(QDockWidget):
         clear_button = QPushButton("Clear and start over")
         clear_button.clicked.connect(self._reset)
         guide_form.addRow(self.guide_label)
+        guide_form.addRow(self.reverse_check)
         guide_form.addRow(clear_button)
         layout.addWidget(guide_box)
 
