@@ -209,6 +209,8 @@ def _build_adaptive(guide, length, width, height, overlap_pct, tolerance):
                 low = mid
             else:
                 high = mid
+    # Stay a hair inside the limit: right at it the last step degenerates to almost nothing.
+    low = max(overlap_pct / 100, low - 0.002)
     data = _adaptive_run(guide, length, width, height, low, tolerance)
     first, last = width / 2, length - width / 2
     spacing = (last - first) / (len(data) - 1) if len(data) > 1 else 0.0
