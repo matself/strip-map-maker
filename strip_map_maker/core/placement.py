@@ -153,14 +153,8 @@ def _build(guide, length, width, height, count, tolerance):
     return data, spacing
 
 
-def _build_adaptive(guide, length, width, height, overlap_pct, tolerance):
-    """Frames spaced by their real (rotated) overlap rather than by chainage.
-
-    On a bend the chord-oriented frames overlap more than the arc spacing suggests,
-    so each frame is pushed forward until its overlap with the previous one is the
-    requested share of the frame area. Returns (frames_data, mean_spacing).
-    """
-    frac = overlap_pct / 100
+def _adaptive_run(guide, length, width, height, frac, tolerance):
+    """Frames where each overlaps the previous by ``frac`` of the frame area (at least)."""
     area = width * height
     first, last = width / 2, length - width / 2
     data = [_end_frame(guide, _point(guide, 0.0), first, -1, width, height, length, tolerance)]
@@ -175,7 +169,7 @@ def _build_adaptive(guide, length, width, height, overlap_pct, tolerance):
         if prev.intersection(trial[3]).area() > frac * area:
             nxt = trial  # even the farthest step overlaps more than asked; take it
         else:
-            for _ in range(24):
+            for _ in range(14):
                 mid = (lo + hi) / 2
                 trial = _frame_at(guide, mid, width, height, length)
                 if prev.intersection(trial[3]).area() > frac * area:
@@ -189,6 +183,34 @@ def _build_adaptive(guide, length, width, height, overlap_pct, tolerance):
     data[-1] = _end_frame(
         guide, _point(guide, length), last, 1, width, height, length, tolerance
     )
+    return data
+
+
+def _build_adaptive(guide, length, width, height, overlap_pct, tolerance):
+    """Frames spaced by their real (rotated) overlap rather than by chainage.
+
+    On a bend the chord-oriented frames overlap more than the arc spacing suggests, so
+    each frame is pushed forward until its overlap with the previous one is the requested
+    share of the frame area. The last frame sits at the end of the line, which would leave
+    it overlapping its neighbour far more than the others; to avoid that, the number of
+    frames is kept and the overlap is raised as far as that number allows, so the
+    leftover is shared by all overlaps. Returns (frames_data, mean_spacing).
+    """
+    low = overlap_pct / 100
+    data = _adaptive_run(guide, length, width, height, low, tolerance)
+    count = len(data)
+    high = 0.95
+    if len(_adaptive_run(guide, length, width, height, high, tolerance)) == count:
+        low = high
+    else:
+        for _ in range(12):
+            mid = (low + high) / 2
+            if len(_adaptive_run(guide, length, width, height, mid, tolerance)) == count:
+                low = mid
+            else:
+                high = mid
+    data = _adaptive_run(guide, length, width, height, low, tolerance)
+    first, last = width / 2, length - width / 2
     spacing = (last - first) / (len(data) - 1) if len(data) > 1 else 0.0
     return data, spacing
 
