@@ -7,7 +7,7 @@ from qgis.PyQt.QtGui import QColor
 
 
 class DrawGuideTool(QgsMapTool):
-    """Left click adds a vertex, right click finishes, Esc cancels."""
+    """Left click adds a vertex; right click, double click or Enter finishes; Esc cancels."""
 
     finished = pyqtSignal(QgsGeometry)  # in the map canvas CRS
     cancelled = pyqtSignal()
@@ -28,15 +28,35 @@ class DrawGuideTool(QgsMapTool):
         self._band.reset(Qgis.GeometryType.Line)
         super().deactivate()
 
+    def finish(self):
+        """Emit the line drawn so far (cancel if it has fewer than two vertices)."""
+        if len(self._points) >= 2:
+            self.finished.emit(QgsGeometry.fromPolylineXY(self._points))
+        else:
+            self.cancelled.emit()
+
+    def _undo(self):
+        if self._points:
+            self._points.pop()
+            self._band.reset(Qgis.GeometryType.Line)
+            for point in self._points:
+                self._band.addPoint(point)
+
+    def canvasPressEvent(self, event):  # noqa: N802
+        # Finish on press, not release: a right-button release can be swallowed by the canvas.
+        if event.button() == Qt.MouseButton.RightButton:
+            event.accept()
+            self.finish()
+
     def canvasReleaseEvent(self, event):  # noqa: N802
         if event.button() == Qt.MouseButton.LeftButton:
             self._points.append(QgsPointXY(event.mapPoint()))
             self._band.addPoint(QgsPointXY(event.mapPoint()))
-        elif event.button() == Qt.MouseButton.RightButton:
-            if len(self._points) >= 2:
-                self.finished.emit(QgsGeometry.fromPolylineXY(self._points))
-            else:
-                self.cancelled.emit()
+
+    def canvasDoubleClickEvent(self, event):  # noqa: N802
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._undo()  # the double click added its vertex twice
+            self.finish()
 
     def canvasMoveEvent(self, event):  # noqa: N802
         if self._points:
@@ -45,4 +65,10 @@ class DrawGuideTool(QgsMapTool):
     def keyPressEvent(self, event):  # noqa: N802
         if event.key() == Qt.Key.Key_Escape:
             self.cancelled.emit()
+            event.accept()
+        elif event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self.finish()
+            event.accept()
+        elif event.key() in (Qt.Key.Key_Backspace, Qt.Key.Key_Delete):
+            self._undo()
             event.accept()

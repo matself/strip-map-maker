@@ -49,6 +49,7 @@ class StripMapMakerPlugin:
         if self.dock is not None:
             self.dock.cleanup()
             self.iface.removeDockWidget(self.dock)
+            self.dock.setParent(None)  # leave the main window at once, not when deleted later
             self.dock.deleteLater()
             self.dock = None
         if self.translator is not None:
@@ -59,4 +60,9 @@ class StripMapMakerPlugin:
         if self.dock is None:
             self.dock = StripMapMakerDockWidget(self.iface, self.iface.mainWindow())
             self.iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock)
+            self.dock.setFloating(False)  # a restored floating state would open at the top left
+            self.dock.setVisible(True)
+            return
         self.dock.setVisible(not self.dock.isVisible())
+        if self.dock.isVisible():
+            self.dock.raise_()

@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""A map series on disk: one GeoPackage holding the guide line, the frames and the setup.
+"""A map series on disk: one GeoPackage holding the frames and the setup.
+
+The guide line is not stored; it only steers the placement.
 
 Layers in the GeoPackage:
-  guide        exactly one line feature
   frames       one polygon per frame (id, azi, x, y, from_m, to_m)
   series_info  key/value table with the setup the frames were built for
 """
@@ -16,7 +17,6 @@ from qgis.core import (
     QgsFeature,
     QgsField,
     QgsFillSymbol,
-    QgsGeometry,
     QgsPalLayerSettings,
     QgsProject,
     QgsProperty,
@@ -33,7 +33,6 @@ from qgis.PyQt.QtGui import QColor, QFont
 
 from .placement import Placement
 
-GUIDE_LAYER = "guide"
 FRAMES_LAYER = "frames"
 INFO_LAYER = "series_info"
 ROLE_PROPERTY = "strip_map_maker/role"
@@ -99,22 +98,12 @@ def _write(layer, path, layer_name, first):
         raise SeriesError(f"Could not write layer '{layer_name}': {result[1]}")
 
 
-def create_series(
-    path, guide: QgsGeometry, crs: QgsCoordinateReferenceSystem, setup: Setup, placement: Placement
-):
+def create_series(path, crs: QgsCoordinateReferenceSystem, setup: Setup, placement: Placement):
     """Write a new series to ``path`` (an existing file is replaced)."""
     path = Path(path)
-    uri = f"LineString?crs={crs.authid() or crs.toWkt()}"
+    uri = f"Polygon?crs={crs.authid() or crs.toWkt()}"
 
-    guide_layer = QgsVectorLayer(uri, GUIDE_LAYER, "memory")
-    guide_layer.dataProvider().addAttributes([_field("name", "QString")])
-    guide_layer.updateFields()
-    feature = QgsFeature(guide_layer.fields())
-    feature["name"] = setup.name
-    feature.setGeometry(guide)
-    guide_layer.dataProvider().addFeature(feature)
-
-    frames_layer = QgsVectorLayer(uri.replace("LineString", "Polygon"), FRAMES_LAYER, "memory")
+    frames_layer = QgsVectorLayer(uri, FRAMES_LAYER, "memory")
     frames_layer.dataProvider().addAttributes(
         [
             _field("id", "Int"),
@@ -146,8 +135,7 @@ def create_series(
         feature.setAttributes([key, value])
         info_layer.dataProvider().addFeature(feature)
 
-    _write(guide_layer, path, GUIDE_LAYER, first=True)
-    _write(frames_layer, path, FRAMES_LAYER, first=False)
+    _write(frames_layer, path, FRAMES_LAYER, first=True)
     _write(info_layer, path, INFO_LAYER, first=False)
 
 
@@ -216,18 +204,14 @@ def apply_default_style(layer: QgsVectorLayer):
 
 
 def add_to_project(path, project: QgsProject = None):
-    """Load a series into ``project`` as a layer group; returns (guide, frames) layers."""
+    """Load a series into ``project`` as a layer group; returns the frames layer."""
     project = project or QgsProject.instance()
     setup = read_setup(path)
-    guide, frames = _open(path, GUIDE_LAYER), _open(path, FRAMES_LAYER)
-    guide.setName(f"{setup.name} - guide")
+    frames = _open(path, FRAMES_LAYER)
     frames.setName(f"{setup.name} - frames")
-    guide.setCustomProperty(ROLE_PROPERTY, "guide")
     frames.setCustomProperty(ROLE_PROPERTY, "frames")
     apply_default_style(frames)
-    project.addMapLayer(guide, False)
     project.addMapLayer(frames, False)
     group = project.layerTreeRoot().addGroup(f"{setup.name} (1:{setup.scale})")
     group.addLayer(frames)
-    group.addLayer(guide)
-    return guide, frames
+    return frames

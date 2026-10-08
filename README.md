@@ -16,17 +16,17 @@ Compatible with QGIS 3.34 up to 4.99 (Qt5 and Qt6).
    The preview updates as you type. Smoothing (an averaging length in metres) flattens small
    meanders so the sheets follow the general direction of the line; the original line is still
    what has to fit inside the sheets.
-4. **Create series...** saves a GeoPackage with three tables and adds the sheets and the guide
-   to the project:
+4. **Save series...** saves a GeoPackage with two tables and adds the sheets to the project. The
+   guide line itself is not saved:
 
    | Table | Content |
    |-------|---------|
    | `frames` | one polygon per sheet: `id`, `azi` (bearing, 0 = north, clockwise), `x`, `y` (centre), `from_m`, `to_m` (distance along the guide) |
-   | `guide` | the single guide line the sheets follow |
    | `series_info` | the size, scale, overlap and smoothing the series was built for |
 
-The first sheet starts at the start of the line and the last one ends at its end. Leftover length
-is spread evenly, so the overlap is never smaller than requested. Sheets that do not suit a
+The first sheet starts at the start of the line and the last one ends at its end. Sheets are
+spaced by their real overlap, so bends do not overlap more than straight stretches, and the overlap
+is never smaller than requested (the last sheet may overlap more). Sheets that do not suit a
 particular stretch can be moved or rotated with QGIS's own editing tools; the sheet label follows
 the geometry.
 

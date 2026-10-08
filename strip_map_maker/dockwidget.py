@@ -105,6 +105,10 @@ class StripMapMakerDockWidget(QDockWidget):
         self._timer.timeout.connect(self._update_preview)
 
         self._build_ui()
+        project = QgsProject.instance()
+        for layer in project.mapLayers().values():
+            self._watch_layer(layer)
+        project.layerWasAdded.connect(self._watch_layer)
 
     # ---- UI -----------------------------------------------------------------------------
 
@@ -112,26 +116,7 @@ class StripMapMakerDockWidget(QDockWidget):
         content = QWidget(self)
         layout = QVBoxLayout(content)
 
-        guide_box = QGroupBox("1. Guide line")
-        guide_form = QFormLayout(guide_box)
-        self.layer_combo = QgsMapLayerComboBox()
-        self.layer_combo.setFilters(Qgis.LayerFilter.LineLayer)
-        use_selected = QPushButton("Use selected lines")
-        use_selected.clicked.connect(self._use_selected)
-        self.draw_button = QPushButton("Draw line on map")
-        self.draw_button.clicked.connect(self._start_drawing)
-        self.guide_label = QLabel("No guide line yet.")
-        self.guide_label.setWordWrap(True)
-        guide_form.addRow("Layer:", self.layer_combo)
-        guide_form.addRow(use_selected)
-        guide_form.addRow(self.draw_button)
-        clear_button = QPushButton("Clear and start over")
-        clear_button.clicked.connect(self._reset)
-        guide_form.addRow(self.guide_label)
-        guide_form.addRow(clear_button)
-        layout.addWidget(guide_box)
-
-        setup_box = QGroupBox("2. Sheets")
+        setup_box = QGroupBox("1. Sheets")
         setup_form = QFormLayout(setup_box)
         self.width_spin = self._spin(QDoubleSpinBox(), 1, 10000, 280, " mm")
         self.height_spin = self._spin(QDoubleSpinBox(), 1, 10000, 180, " mm")
@@ -144,21 +129,44 @@ class StripMapMakerDockWidget(QDockWidget):
         setup_form.addRow("Height:", self.height_spin)
         setup_form.addRow("Scale:", self.scale_spin)
         setup_form.addRow("Overlap:", self.overlap_spin)
-        setup_form.addRow("Smoothing:", self.smooth_spin)
         self.reverse_check = QCheckBox("Reverse sheet numbering")
         self.reverse_check.setToolTip("Number the sheets from the other end of the guide line.")
         self.reverse_check.toggled.connect(self._schedule_preview)
         setup_form.addRow(self.reverse_check)
         layout.addWidget(setup_box)
 
+        guide_box = QGroupBox("2. Guide line")
+        guide_form = QFormLayout(guide_box)
+        self.layer_combo = QgsMapLayerComboBox()
+        self.layer_combo.setFilters(Qgis.LayerFilter.LineLayer)
+        use_selected = QPushButton("Use selected lines")
+        use_selected.clicked.connect(self._use_selected)
+        self.draw_button = QPushButton("Draw line on map")
+        self.draw_button.clicked.connect(self._start_drawing)
+        self.guide_label = QLabel("No guide line yet.")
+        self.guide_label.setWordWrap(True)
+        guide_form.addRow("Layer:", self.layer_combo)
+        guide_form.addRow("Smoothing:", self.smooth_spin)
+        guide_form.addRow(use_selected)
+        guide_form.addRow(self.draw_button)
+        self.finish_button = QPushButton("Finish line")
+        self.finish_button.setVisible(False)
+        self.finish_button.clicked.connect(self._draw_tool.finish)
+        guide_form.addRow(self.finish_button)
+        clear_button = QPushButton("Clear and start over")
+        clear_button.clicked.connect(self._reset)
+        guide_form.addRow(self.guide_label)
+        guide_form.addRow(clear_button)
+        layout.addWidget(guide_box)
+
         self.info_label = QLabel("")
         self.info_label.setWordWrap(True)
         layout.addWidget(self.info_label)
 
-        create_box = QGroupBox("3. Create")
+        create_box = QGroupBox("3. Save")
         create_form = QFormLayout(create_box)
         self.name_edit = QLineEdit("Strip map")
-        self.create_button = QPushButton("Create series...")
+        self.create_button = QPushButton("Save series...")
         self.create_button.setEnabled(False)
         self.create_button.clicked.connect(self._create)
         create_form.addRow("Name:", self.name_edit)
@@ -180,15 +188,44 @@ class StripMapMakerDockWidget(QDockWidget):
 
     # ---- guide input --------------------------------------------------------------------
 
-    def _use_selected(self):
-        layer = self.layer_combo.currentLayer()
+    def _selection_layer(self):
+        """The line layer holding the selection: the chosen layer, else any with one."""
+        current = self.layer_combo.currentLayer()
+        if isinstance(current, QgsVectorLayer) and current.selectedFeatureCount():
+            return current
+        for layer in QgsProject.instance().mapLayers().values():
+            if (
+                isinstance(layer, QgsVectorLayer)
+                and layer.geometryType() == Qgis.GeometryType.Line
+                and layer.selectedFeatureCount()
+            ):
+                return layer
+        return current
+
+    def _watch_layer(self, layer):
+        if isinstance(layer, QgsVectorLayer) and layer.geometryType() == Qgis.GeometryType.Line:
+            layer.selectionChanged.connect(self._selection_changed)
+
+    def _selection_changed(self, selected, *_):
+        """Pick up a new selection straight away; clearing one leaves the guide alone."""
+        if selected and self.canvas.mapTool() is not self._draw_tool:
+            layer = self.sender()
+            if isinstance(layer, QgsVectorLayer):
+                self.layer_combo.setLayer(layer)
+            self._use_selected(quiet=True)
+
+    def _use_selected(self, *_, quiet=False):
+        layer = self._selection_layer()
         if not isinstance(layer, QgsVectorLayer):
-            self._message("Pick a line layer first.")
+            if not quiet:
+                self._message("Pick a line layer first.")
             return
         features = layer.selectedFeatures()
         if not features:
-            self._message("Select one or more lines in the layer first.")
+            if not quiet:
+                self._message("Select one or more lines in the layer first.")
             return
+        self.layer_combo.setLayer(layer)
         try:
             result = chain_lines([f.geometry() for f in features], tolerance=self._tolerance())
         except GuideError as error:
@@ -201,9 +238,11 @@ class StripMapMakerDockWidget(QDockWidget):
         self._previous_tool = self.canvas.mapTool()
         self.canvas.setMapTool(self._draw_tool)
         self.draw_button.setText("Drawing: left click adds, right click finishes")
+        self.finish_button.setVisible(True)
 
     def _stop_drawing(self):
         self.draw_button.setText("Draw line on map")
+        self.finish_button.setVisible(False)
         if self._previous_tool is not None:
             self.canvas.setMapTool(self._previous_tool)
         else:
@@ -310,13 +349,13 @@ class StripMapMakerDockWidget(QDockWidget):
             smoothing_m=self.smooth_spin.value(),
         )
         try:
-            create_series(Path(path), self._guide, self._crs, setup, self._placement)
+            create_series(Path(path), self._crs, setup, self._placement)
             add_to_project(path, QgsProject.instance())
         except SeriesError as error:
             self._message(str(error))
             return
         self._reset(deselect=False)
-        self.info_label.setText(f"Created {Path(path).name}.")
+        self.info_label.setText(f"Saved {Path(path).name}.")
 
     def _reset(self, *_, deselect=True):
         """Forget the guide line and the preview so a new series can be started."""

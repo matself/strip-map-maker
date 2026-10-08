@@ -36,12 +36,11 @@ def test_create_and_reload_series(tmp_path):
     placement = place_frames(guide, setup.width_m, setup.height_m, setup.overlap_pct)
 
     path = tmp_path / "route_a.gpkg"
-    create_series(path, guide, crs, setup, placement)
+    create_series(path, crs, setup, placement)
 
     assert read_setup(path) == setup
     project = QgsProject()
-    guide_layer, frames_layer = add_to_project(path, project)
-    assert guide_layer.featureCount() == 1
+    frames_layer = add_to_project(path, project)
     assert frames_layer.featureCount() == len(placement.frames)
     assert frames_layer.crs().authid() == "EPSG:3006"
     first = next(frames_layer.getFeatures(), None)
@@ -60,9 +59,9 @@ def test_layout_rotation_expression_matches_azi(tmp_path):
     setup = Setup("Bend", width_mm=280, height_mm=180, scale=1000, overlap_pct=10)
     placement = place_frames(guide, setup.width_m, setup.height_m, setup.overlap_pct)
     path = tmp_path / "bend.gpkg"
-    create_series(path, guide, crs, setup, placement)
+    create_series(path, crs, setup, placement)
     project = QgsProject()
-    _, frames_layer = add_to_project(path, project)
+    frames_layer = add_to_project(path, project)
     expression = QgsExpression(LAYOUT_ROTATION_EXPRESSION)
     for feature in frames_layer.getFeatures():
         context = QgsExpressionContext()
