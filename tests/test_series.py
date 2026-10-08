@@ -45,12 +45,13 @@ def test_create_and_reload_series(tmp_path):
     assert frames_layer.crs().authid() == "EPSG:3006"
     first = next(frames_layer.getFeatures(), None)
     assert first["id"] == 1 and first["from_m"] == pytest.approx(0)
+    assert -90 <= first["rotation"] < 90
 
 
 def test_layout_rotation_expression_matches_azi(tmp_path):
     from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextUtils
 
-    from strip_map_maker.core.series import LAYOUT_ROTATION_EXPRESSION
+    from strip_map_maker.core.series import LAYOUT_ROTATION_EXPRESSION, layout_rotation
 
     crs = QgsCoordinateReferenceSystem("EPSG:3006")
     guide = QgsGeometry.fromPolylineXY(
@@ -67,6 +68,5 @@ def test_layout_rotation_expression_matches_azi(tmp_path):
         context = QgsExpressionContext()
         context.appendScope(QgsExpressionContextUtils.layerScope(frames_layer))
         context.setFeature(feature)
-        assert expression.evaluate(context) == pytest.approx(
-            (180 - feature["azi"]) % 180 - 90, abs=1e-6
-        )
+        assert expression.evaluate(context) == pytest.approx(feature["rotation"], abs=1e-6)
+        assert feature["rotation"] == pytest.approx(layout_rotation(feature["azi"]), abs=1e-6)

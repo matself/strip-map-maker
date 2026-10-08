@@ -4,7 +4,7 @@
 The guide line is not stored; it only steers the placement.
 
 Layers in the GeoPackage:
-  frames       one polygon per frame (id, azi, x, y, from_m, to_m)
+  frames       one polygon per frame (id, azi, x, y, from_m, to_m, rotation)
   series_info  key/value table with the setup the frames were built for
 """
 from dataclasses import asdict, dataclass
@@ -14,6 +14,7 @@ from qgis.core import (
     Qgis,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransformContext,
+    QgsDefaultValue,
     QgsFeature,
     QgsField,
     QgsFillSymbol,
@@ -43,6 +44,14 @@ BEARING_EXPRESSION = "degrees(azimuth(point_n($geometry, 4), point_n($geometry, 
 # Rotation (-90 <= r < 90) that makes the route run horizontally in a layout map item with
 # the map text upright: a route heading west is shown right to left, never upside down.
 LAYOUT_ROTATION_EXPRESSION = f"((180 - {BEARING_EXPRESSION}) % 180 + 180) % 180 - 90"
+# The sheet number is drawn along the long axis, turned the opposite way so that it reads
+# upright; that is the sheet's "up", and it is also the way up of the map in the layout.
+LABEL_ROTATION_EXPRESSION = f"(360 - ({LAYOUT_ROTATION_EXPRESSION})) % 360"
+
+
+def layout_rotation(azi: float) -> float:
+    """Map item rotation (-90 <= r < 90) for a frame with bearing ``azi``; see above."""
+    return (180 - azi) % 180 - 90
 
 
 class SeriesError(RuntimeError):
@@ -113,12 +122,23 @@ def create_series(path, crs: QgsCoordinateReferenceSystem, setup: Setup, placeme
             _field("y", "Double"),
             _field("from_m", "Double"),
             _field("to_m", "Double"),
+            _field("rotation", "Double"),
         ]
     )
     frames_layer.updateFields()
     for frame in placement.frames:
         feature = QgsFeature(frames_layer.fields())
-        feature.setAttributes([frame.id, frame.azi, frame.x, frame.y, frame.from_m, frame.to_m])
+        feature.setAttributes(
+            [
+                frame.id,
+                frame.azi,
+                frame.x,
+                frame.y,
+                frame.from_m,
+                frame.to_m,
+                layout_rotation(frame.azi),
+            ]
+        )
         feature.setGeometry(frame.geometry)
         frames_layer.dataProvider().addFeature(feature)
 
@@ -184,7 +204,7 @@ def apply_default_style(layer: QgsVectorLayer):
     settings.placement = Qgis.LabelPlacement.OverPoint
     settings.dataDefinedProperties().setProperty(
         QgsPalLayerSettings.Property.LabelRotation,
-        QgsProperty.fromExpression(f"({BEARING_EXPRESSION} - 90 + 360) % 360"),
+        QgsProperty.fromExpression(LABEL_ROTATION_EXPRESSION),
     )
     text = QgsTextFormat()
     font = QFont("Arial", 18)
@@ -211,6 +231,11 @@ def add_to_project(path, project: QgsProject = None):
     frames = _open(path, FRAMES_LAYER)
     frames.setName(f"{setup.name} - frames")
     frames.setCustomProperty(ROLE_PROPERTY, "frames")
+    # keep the stored rotation right when a sheet is turned or moved by hand
+    frames.setDefaultValueDefinition(
+        frames.fields().indexFromName("rotation"),
+        QgsDefaultValue(LAYOUT_ROTATION_EXPRESSION, True),
+    )
     apply_default_style(frames)
     project.addMapLayer(frames, False)
     group = project.layerTreeRoot().addGroup(f"{setup.name} (1:{setup.scale})")

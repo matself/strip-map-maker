@@ -21,7 +21,7 @@ Compatible with QGIS 3.34 up to 4.99 (Qt5 and Qt6).
 
    | Table | Content |
    |-------|---------|
-   | `frames` | one polygon per sheet: `id`, `azi` (bearing, 0 = north, clockwise), `x`, `y` (centre), `from_m`, `to_m` (distance along the guide) |
+   | `frames` | one polygon per sheet: `id`, `azi` (bearing, 0 = north, clockwise), `x`, `y` (centre), `from_m`, `to_m` (distance along the guide), `rotation` (map item rotation for the layout) |
    | `series_info` | the size, scale, overlap and smoothing the series was built for |
 
 The first sheet starts at the start of the line and the last one ends at its end. Sheets are
@@ -35,19 +35,16 @@ the geometry.
 1. Add a map item with the same size as the sheet and set the scale.
 2. *Atlas* panel: coverage layer = `frames`, sort by `id`. In the map item tick
    *Controlled by atlas* with margin 0 %.
-3. Map item rotation, data-defined override:
+3. Map item rotation, data-defined override: the `rotation` field of the sheet.
 
-```
-((180 - degrees(azimuth(point_n($geometry, 4), point_n($geometry, 1)))) % 180 + 180) % 180 - 90
-```
+`rotation` turns the sheet so that its long edge runs horizontally and the sheet number reads
+upright, as it does on the overview map: that is the sheet's "up". Rotation is between -90 and
+90 degrees, so a route heading west is shown running from right to left, not upside down.
+The field is a default value that is recalculated from the sheet geometry when a sheet is
+turned or moved by hand.
 
-This turns every sheet so that the route runs horizontally and the map text stays upright
-(rotation between -90 and 90 degrees). A route heading west is therefore shown running from
-right to left, not upside down. The rotation is read from the sheet geometry, so it stays
-correct after a sheet has been rotated by hand.
-
-To always have the route run from left to right on every page, even when that turns the
-map upside down, use this instead:
+To have the route run from left to right on every page, even when that turns the map upside
+down, use this expression instead:
 
 ```
 (90 - degrees(azimuth(point_n($geometry, 4), point_n($geometry, 1))) + 360) % 360
