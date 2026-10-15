@@ -11,6 +11,7 @@ All sizes in this module are millimetres on paper.
 """
 import math
 from dataclasses import dataclass
+from pathlib import Path
 
 from qgis.core import (
     Qgis,
@@ -40,8 +41,9 @@ MIN_SIDE_MARGIN = 5.0
 GAP = 3.0  # between the map and the band below it
 MIN_BAND = 14.0  # least height of the band for anything useful
 ARROW_EXTENT = 18.0  # most room (mm) the north arrow may take when turned
-ARROW_GROWTH = 1.3  # a turned arrow's frame grows to about this times its resting size
-NORTH_ARROW = ":/images/north_arrows/layout_default_north_arrow.svg"
+ARROW_GROWTH = 1.45  # a turned arrow's frame grows to at most this times its resting size
+# A ring with an arrow: being circular, it keeps its apparent size when turned.
+NORTH_ARROW = str(Path(__file__).resolve().parent.parent / "north_arrow.svg")
 UNIT = Qgis.LayoutUnit.Millimeters
 
 

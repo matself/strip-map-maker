@@ -22,6 +22,6 @@ changelog=
           - Guide line: gap tolerance for joining lines, finish drawing with right click, double click or Enter, optional smoothing
           - Reverse sheet numbering; Clear and start over; numbered sheets in the preview
           - New frames field 'rotation' keeps the sheet number upright; new icon
-          - The north arrow in the atlas keeps its size when it is turned
+          - The atlas north arrow is a ring that keeps its size when turned
           - The guide line is no longer saved with the series
     0.1.0 - Initial version

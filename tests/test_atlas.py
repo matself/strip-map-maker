@@ -76,6 +76,8 @@ def test_build_atlas_from_series(tmp_path):
     assert len(maps) == 2  # the main map and the overview
     arrows = [item for item in layout.items() if isinstance(item, QgsLayoutItemPicture)]
     assert len(arrows) == 1
+    assert Path(arrows[0].picturePath()).name == "north_arrow.svg"
+    assert Path(arrows[0].picturePath()).exists()
     # the frame follows the turned arrow, so its size does not change with the rotation
     assert arrows[0].resizeMode() == QgsLayoutItemPicture.ResizeMode.ZoomResizeFrame
     assert arrows[0].referencePoint() == QgsLayoutItem.ReferencePoint.Middle
