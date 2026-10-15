@@ -17,6 +17,7 @@ import math
 from dataclasses import dataclass, field
 
 from qgis.core import QgsGeometry, QgsPointXY
+from qgis.PyQt.QtCore import QCoreApplication
 
 # How many points are sampled across a frame to centre it on the route sideways.
 SAMPLES = 21
@@ -256,11 +257,17 @@ def place_frames(
     ``Placement.uncovered`` is measured along ``cover``.
     """
     if width <= 0 or height <= 0:
-        raise PlacementError("Frame width and height must be positive.")
+        raise PlacementError(
+            QCoreApplication.translate("Placement", "Frame width and height must be positive.")
+        )
     if not 0 <= overlap_pct < 100:
-        raise PlacementError("Overlap must be at least 0 % and less than 100 %.")
+        raise PlacementError(
+            QCoreApplication.translate(
+                "Placement", "Overlap must be at least 0 % and less than 100 %."
+            )
+        )
     if guide is None or guide.isEmpty() or guide.length() <= 0:
-        raise PlacementError("The guide line is empty.")
+        raise PlacementError(QCoreApplication.translate("Placement", "The guide line is empty."))
     length = guide.length()
     tolerance = width * 1e-3
     cover = cover if cover is not None else guide

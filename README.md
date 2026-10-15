@@ -74,6 +74,14 @@ down, use this expression instead:
 (90 - degrees(azimuth(point_n($geometry, 4), point_n($geometry, 1))) + 360) % 360
 ```
 
+## Language
+
+The interface is in English. A complete Swedish translation is included and is used when QGIS
+itself is set to Swedish (*Settings > Options > General > User interface translation*). The
+texts written into an atlas layout ("Sheet n of N", the scale) follow the same language.
+Other languages can be added as `strip_map_maker/i18n/strip_map_maker_<code>.ts`, see
+[i18n/README.md](strip_map_maker/i18n/README.md).
+
 ## Development
 
 Link the plugin folder into your QGIS profile so changes are picked up (use the Plugin Reloader plugin):
@@ -94,7 +102,7 @@ python -m pytest
 Build an installable zip:
 
 ```bash
-python scripts/build_zip.py   # -> dist/strip_map_maker-0.2.0.zip
+python scripts/build_zip.py   # -> dist/strip_map_maker-0.3.0.zip
 ```
 
 ### Qt5 / Qt6 compatibility rules

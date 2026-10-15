@@ -9,6 +9,7 @@ import math
 from dataclasses import dataclass, field
 
 from qgis.core import QgsGeometry, QgsPointXY, QgsWkbTypes
+from qgis.PyQt.QtCore import QCoreApplication
 
 # Points closer than this (map units) are treated as the same point when joining.
 COINCIDENT = 1e-9
@@ -36,7 +37,9 @@ def _parts(geometry: QgsGeometry) -> list[list[QgsPointXY]]:
     if geometry is None or geometry.isNull() or geometry.isEmpty():
         return []
     if QgsWkbTypes.geometryType(geometry.wkbType()) != QgsWkbTypes.GeometryType.LineGeometry:
-        raise GuideError("Only line geometries can be used as a guide.")
+        raise GuideError(
+            QCoreApplication.translate("Guide", "Only line geometries can be used as a guide.")
+        )
     if geometry.isMultipart():
         raw = geometry.asMultiPolyline()
     else:
@@ -64,7 +67,9 @@ def chain_lines(geometries, tolerance: float = 1.0) -> ChainResult:
     for geometry in geometries:
         remaining.extend(_parts(geometry))
     if not remaining:
-        raise GuideError("No line geometry to build a guide from.")
+        raise GuideError(
+            QCoreApplication.translate("Guide", "No line geometry to build a guide from.")
+        )
 
     chain = remaining.pop(0)
     gaps: list[float] = []
@@ -88,8 +93,11 @@ def chain_lines(geometries, tolerance: float = 1.0) -> ChainResult:
         distance, index, attach_tail, flip = best
         if distance > tolerance:
             raise GuideError(
-                f"The selected lines are not connected: the nearest remaining line is "
-                f"{distance:.2f} map units from the route (tolerance {tolerance:.2f})."
+                QCoreApplication.translate(
+                    "Guide",
+                    "The selected lines are not connected: the nearest remaining line is "
+                    "{distance:.2f} map units from the route (tolerance {tolerance:.2f}).",
+                ).format(distance=distance, tolerance=tolerance)
             )
         part = remaining.pop(index)
         if flip:
@@ -109,10 +117,12 @@ def single_line(geometry: QgsGeometry) -> QgsGeometry:
     """Validate a drawn or stored line as a guide and return it as a single 2D part."""
     parts = _parts(geometry)
     if len(parts) != 1:
-        raise GuideError("A guide line must be a single connected line.")
+        raise GuideError(
+            QCoreApplication.translate("Guide", "A guide line must be a single connected line.")
+        )
     line = QgsGeometry.fromPolylineXY(parts[0])
     if line.length() <= 0:
-        raise GuideError("The guide line has zero length.")
+        raise GuideError(QCoreApplication.translate("Guide", "The guide line has zero length."))
     return line
 
 

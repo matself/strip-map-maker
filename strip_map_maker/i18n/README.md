@@ -1,11 +1,22 @@
 # Translations
 
-Extract strings and compile translations (Qt Linguist tools required):
+Source strings are English. Each language is a Qt Linguist file `strip_map_maker_<code>.ts`
+compiled to `strip_map_maker_<code>.qm`; `plugin.py` loads the `.qm` that matches the QGIS
+language automatically. The `.ts` file is the source and is kept in the repository; only the
+`.qm` goes into the plugin zip.
+
+Strings are marked with `self.tr()` in the panel and `QCoreApplication.translate()` in
+`core/` (contexts `Guide`, `Placement`, `Atlas`, `Series`). Texts with values use named
+placeholders such as `{count}`; keep them unchanged in the translation.
+
+Update the `.ts` file after changing strings, translate the new entries, then compile
+(`lupdate` and `lrelease` come with Qt, or with `pip install pyside6-essentials`):
 
 ```bash
-pylupdate5 plugin.py provider.py algorithms/example_algorithm.py -ts i18n/strip_map_maker_sv.ts
-lrelease i18n/strip_map_maker_sv.ts
+lupdate strip_map_maker/dockwidget.py strip_map_maker/plugin.py strip_map_maker/maptool.py \
+  strip_map_maker/core/guide.py strip_map_maker/core/placement.py strip_map_maker/core/atlas.py \
+  strip_map_maker/core/series.py -ts strip_map_maker/i18n/strip_map_maker_sv.ts
+lrelease strip_map_maker/i18n/strip_map_maker_sv.ts -qm strip_map_maker/i18n/strip_map_maker_sv.qm
 ```
 
-`plugin.py` loads `i18n/strip_map_maker_<locale>.qm` automatically.
-Source strings stay in English.
+`tests/test_translation.py` checks that no entry is unfinished and that the placeholders match.

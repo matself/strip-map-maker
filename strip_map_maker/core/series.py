@@ -28,7 +28,7 @@ from qgis.core import (
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
 )
-from qgis.PyQt.QtCore import QMetaType, QVariant
+from qgis.PyQt.QtCore import QCoreApplication, QMetaType, QVariant
 from qgis.PyQt.QtGui import QColor, QFont
 
 from .placement import Placement
@@ -114,7 +114,11 @@ def _write(layer, path, layer_name, first):
         layer, str(path), QgsCoordinateTransformContext(), options
     )
     if result[0] != QgsVectorFileWriter.WriterError.NoError:
-        raise SeriesError(f"Could not write layer '{layer_name}': {result[1]}")
+        raise SeriesError(
+            QCoreApplication.translate("Series", "Could not write layer '{layer}': {error}").format(
+                layer=layer_name, error=result[1]
+            )
+        )
 
 
 def create_series(path, crs: QgsCoordinateReferenceSystem, setup: Setup, placement: Placement):
@@ -172,7 +176,11 @@ def create_series(path, crs: QgsCoordinateReferenceSystem, setup: Setup, placeme
 def _open(path, name):
     layer = QgsVectorLayer(f"{path}|layername={name}", name, "ogr")
     if not layer.isValid():
-        raise SeriesError(f"'{name}' not found in {path}")
+        raise SeriesError(
+            QCoreApplication.translate("Series", "'{name}' not found in {path}").format(
+                name=name, path=path
+            )
+        )
     return layer
 
 
@@ -189,7 +197,10 @@ def read_setup(path) -> Setup:
             smoothing_m=float(values.get("smoothing_m", 0)),
         )
     except KeyError as missing:
-        raise SeriesError(f"Series setup is incomplete: {missing} missing") from None
+        message = QCoreApplication.translate(
+            "Series", "Series setup is incomplete: {missing} missing"
+        )
+        raise SeriesError(message.format(missing=missing)) from None
 
 
 def apply_default_style(layer: QgsVectorLayer):

@@ -143,7 +143,7 @@ class StripMapMakerDockWidget(QDockWidget):
         series_page = QWidget()
         layout = QVBoxLayout(series_page)
 
-        setup_box = QGroupBox("1. Sheets")
+        setup_box = QGroupBox(self.tr("1. Sheets"))
         setup_form = QFormLayout(setup_box)
         self.width_spin = self._spin(QDoubleSpinBox(), 1, 10000, 280, " mm")
         self.height_spin = self._spin(QDoubleSpinBox(), 1, 10000, 180, " mm")
@@ -153,58 +153,66 @@ class StripMapMakerDockWidget(QDockWidget):
         self.scale_spin.setSingleStep(500)
         self.overlap_spin = self._spin(QDoubleSpinBox(), 0, 90, 10, " %")
         self.smooth_spin = self._spin(QDoubleSpinBox(), 0, 100000, 0, " m")
-        self.smooth_spin.setToolTip("Averaging length; 0 follows the line exactly.")
+        self.smooth_spin.setToolTip(self.tr("Averaging length; 0 follows the line exactly."))
         self.preset_combo = QComboBox()
-        self.preset_combo.addItems(["Custom", *PAGE_PRESETS])
+        self.preset_combo.addItem(self.tr("Custom"), "")
+        self.preset_combo.addItem(self.tr("A4 landscape"), "A4 landscape")
+        self.preset_combo.addItem(self.tr("A3 landscape"), "A3 landscape")
         self.preset_combo.setToolTip(
-            "Sheet sizes that fill the page and leave room below for the sheet number, "
-            "scale bar and overview map in the atlas."
+            self.tr(
+                "Sheet sizes that fill the page and leave room below for the sheet number, "
+                "scale bar and overview map in the atlas."
+            )
         )
         self.preset_combo.activated.connect(self._apply_preset)
-        setup_form.addRow("Fit to page:", self.preset_combo)
-        setup_form.addRow("Width:", self.width_spin)
-        setup_form.addRow("Height:", self.height_spin)
-        setup_form.addRow("Scale:", self.scale_spin)
-        setup_form.addRow("Overlap:", self.overlap_spin)
-        self.reverse_button = QPushButton("Reverse sheet numbering")
+        setup_form.addRow(self.tr("Fit to page:"), self.preset_combo)
+        setup_form.addRow(self.tr("Width:"), self.width_spin)
+        setup_form.addRow(self.tr("Height:"), self.height_spin)
+        setup_form.addRow(self.tr("Scale:"), self.scale_spin)
+        setup_form.addRow(self.tr("Overlap:"), self.overlap_spin)
+        self.reverse_button = QPushButton(self.tr("Reverse sheet numbering"))
         self.reverse_button.setCheckable(True)
         self.reverse_button.setToolTip(
-            "Number the sheets from the other end of the guide line. Renumbers the sheets "
-            "shown; their positions stay."
+            self.tr(
+                "Number the sheets from the other end of the guide line. Renumbers the sheets "
+                "shown; their positions stay."
+            )
         )
         self.reverse_button.toggled.connect(self._reverse_numbers)
         layout.addWidget(setup_box)
 
-        guide_box = QGroupBox("2. Guide line")
+        guide_box = QGroupBox(self.tr("2. Guide line"))
         guide_form = QFormLayout(guide_box)
         self.layer_combo = QgsMapLayerComboBox()
         self.layer_combo.setFilters(Qgis.LayerFilter.LineLayer)
-        use_selected = QPushButton("Use selected lines")
+        use_selected = QPushButton(self.tr("Use selected lines"))
         use_selected.clicked.connect(self._use_selected)
-        self.draw_button = QPushButton("Draw line on map")
+        self.draw_button = QPushButton(self.tr("Draw line on map"))
         self.draw_button.clicked.connect(self._start_drawing)
-        self.guide_label = QLabel("No guide line yet.")
+        self.guide_label = QLabel(self.tr("No guide line yet."))
         self.guide_label.setWordWrap(True)
-        guide_form.addRow("Layer:", self.layer_combo)
-        guide_form.addRow("Smoothing:", self.smooth_spin)
+        guide_form.addRow(self.tr("Layer:"), self.layer_combo)
+        guide_form.addRow(self.tr("Smoothing:"), self.smooth_spin)
         self.gap_spin = QDoubleSpinBox()
         self.gap_spin.setRange(0, 10000)
         self.gap_spin.setDecimals(1)
         self.gap_spin.setValue(DEFAULT_GAP_M)
         self.gap_spin.setSuffix(" m")
         self.gap_spin.setToolTip(
-            "Selected lines whose ends are this close are joined with a straight segment, "
-            "so small digitising gaps do not stop the route."
+            self.tr(
+                "Selected lines whose ends are this close are joined with a straight segment, "
+                "so small digitising gaps do not stop the route."
+            )
         )
         self.gap_spin.valueChanged.connect(self._gap_changed)
-        guide_form.addRow("Join gaps up to:", self.gap_spin)
+        guide_form.addRow(self.tr("Join gaps up to:"), self.gap_spin)
         guide_form.addRow(use_selected)
         guide_form.addRow(self.draw_button)
-        self.finish_button = QPushButton("Finish line")
+        self.finish_button = QPushButton(self.tr("Finish line"))
         self.finish_button.setVisible(False)
         self.finish_button.clicked.connect(self._draw_tool.finish)
         guide_form.addRow(self.finish_button)
-        clear_button = QPushButton("Clear and start over")
+        clear_button = QPushButton(self.tr("Clear and start over"))
         clear_button.clicked.connect(self._reset)
         guide_form.addRow(self.guide_label)
         guide_form.addRow(self.reverse_button)
@@ -215,53 +223,53 @@ class StripMapMakerDockWidget(QDockWidget):
         self.info_label.setWordWrap(True)
         layout.addWidget(self.info_label)
 
-        save_box = QGroupBox("3. Save")
+        save_box = QGroupBox(self.tr("3. Save"))
         save_form = QFormLayout(save_box)
-        self.name_edit = QLineEdit("Strip map")
-        self.create_button = QPushButton("Save series...")
+        self.name_edit = QLineEdit(self.tr("Strip map"))
+        self.create_button = QPushButton(self.tr("Save series..."))
         self.create_button.setEnabled(False)
         self.create_button.clicked.connect(self._create)
-        save_form.addRow("Name:", self.name_edit)
+        save_form.addRow(self.tr("Name:"), self.name_edit)
         save_form.addRow(self.create_button)
         layout.addWidget(save_box)
 
         layout.addStretch()
-        tabs.addTab(series_page, "Series")
-        tabs.addTab(self._build_atlas_tab(), "Atlas")
+        tabs.addTab(series_page, self.tr("Series"))
+        tabs.addTab(self._build_atlas_tab(), self.tr("Atlas"))
         tabs.currentChanged.connect(self._refresh_series_list)
         self.setWidget(tabs)
 
     def _build_atlas_tab(self):
         page = QWidget()
         layout = QVBoxLayout(page)
-        box = QGroupBox("Atlas from a saved series")
+        box = QGroupBox(self.tr("Atlas from a saved series"))
         form = QFormLayout(box)
         self.series_combo = QComboBox()
         self.series_combo.currentIndexChanged.connect(self._atlas_check)
-        open_button = QPushButton("Open series file...")
+        open_button = QPushButton(self.tr("Open series file..."))
         open_button.clicked.connect(self._open_series)
         self.page_combo = QComboBox()
         self.page_combo.addItems(["A4", "A3"])
         self.page_combo.currentIndexChanged.connect(self._atlas_check)
-        self.overview_check = QCheckBox("Overview map")
+        self.overview_check = QCheckBox(self.tr("Overview map"))
         self.overview_check.setChecked(True)
-        self.scalebar_check = QCheckBox("Scale bar")
+        self.scalebar_check = QCheckBox(self.tr("Scale bar"))
         self.scalebar_check.setChecked(True)
-        self.arrow_check = QCheckBox("North arrow")
+        self.arrow_check = QCheckBox(self.tr("North arrow"))
         self.arrow_check.setChecked(True)
         self.layout_name_edit = QLineEdit()
-        self.layout_name_edit.setPlaceholderText("Layout name (optional)")
+        self.layout_name_edit.setPlaceholderText(self.tr("Layout name (optional)"))
         self.atlas_info = QLabel("")
         self.atlas_info.setWordWrap(True)
-        self.atlas_button = QPushButton("Create atlas")
+        self.atlas_button = QPushButton(self.tr("Create atlas"))
         self.atlas_button.clicked.connect(self._create_atlas)
-        form.addRow("Series:", self.series_combo)
+        form.addRow(self.tr("Series:"), self.series_combo)
         form.addRow(open_button)
-        form.addRow("Page (landscape):", self.page_combo)
+        form.addRow(self.tr("Page (landscape):"), self.page_combo)
         form.addRow(self.overview_check)
         form.addRow(self.scalebar_check)
         form.addRow(self.arrow_check)
-        form.addRow("Name:", self.layout_name_edit)
+        form.addRow(self.tr("Name:"), self.layout_name_edit)
         form.addRow(self.atlas_info)
         form.addRow(self.atlas_button)
         layout.addWidget(box)
@@ -272,7 +280,7 @@ class StripMapMakerDockWidget(QDockWidget):
         return page
 
     def _apply_preset(self, *_):
-        size = PAGE_PRESETS.get(self.preset_combo.currentText())
+        size = PAGE_PRESETS.get(self.preset_combo.currentData())
         if size is None:
             return
         for spin, value in zip((self.width_spin, self.height_spin), size):
@@ -316,7 +324,9 @@ class StripMapMakerDockWidget(QDockWidget):
         self._atlas_check()
 
     def _open_series(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Open series", "", "GeoPackage (*.gpkg)")
+        path, _ = QFileDialog.getOpenFileName(
+            self, self.tr("Open series"), "", "GeoPackage (*.gpkg)"
+        )
         if not path:
             return
         try:
@@ -343,18 +353,26 @@ class StripMapMakerDockWidget(QDockWidget):
         self.atlas_button.setEnabled(False)
         layer, setup = self._selected_series()
         if layer is None:
-            self.atlas_info.setText("No series in the project. Save one, or open a series file.")
+            self.atlas_info.setText(
+                self.tr("No series in the project. Save one, or open a series file.")
+            )
             return
-        text = f"Sheets {setup.width_mm:g} x {setup.height_mm:g} mm, scale 1:{setup.scale}."
+        text = self.tr("Sheets {width:g} x {height:g} mm, scale 1:{scale}.").format(
+            width=setup.width_mm, height=setup.height_mm, scale=setup.scale
+        )
         try:
             band = page_band(self.page_combo.currentText(), setup)
         except AtlasError as error:
             self.atlas_info.setText(f"{text}\n{error}")
             return
         if band < MIN_BAND:
-            text += f"\nOnly {band:.0f} mm is left under the map: no room for the notes."
+            text += "\n" + self.tr(
+                "Only {band:.0f} mm is left under the map: no room for the notes."
+            ).format(band=band)
         else:
-            text += f"\n{band:.0f} mm is left under the map for the notes."
+            text += "\n" + self.tr("{band:.0f} mm is left under the map for the notes.").format(
+                band=band
+            )
         self.atlas_info.setText(text)
         self.atlas_button.setEnabled(True)
 
@@ -374,7 +392,7 @@ class StripMapMakerDockWidget(QDockWidget):
         except AtlasError as error:
             self._message(str(error))
             return
-        self.atlas_info.setText(f"Created the layout '{layout.name()}'.")
+        self.atlas_info.setText(self.tr("Created the layout '{name}'.").format(name=layout.name()))
         self.iface.openLayoutDesigner(layout)
 
     # ---- guide input --------------------------------------------------------------------
@@ -409,12 +427,12 @@ class StripMapMakerDockWidget(QDockWidget):
         layer = self._selection_layer()
         if not isinstance(layer, QgsVectorLayer):
             if not quiet:
-                self._message("Pick a line layer first.")
+                self._message(self.tr("Pick a line layer first."))
             return
         features = layer.selectedFeatures()
         if not features:
             if not quiet:
-                self._message("Select one or more lines in the layer first.")
+                self._message(self.tr("Select one or more lines in the layer first."))
             return
         self.layer_combo.setLayer(layer)
         try:
@@ -422,18 +440,20 @@ class StripMapMakerDockWidget(QDockWidget):
         except GuideError as error:
             self._message(str(error))
             return
-        note = f" ({result.pieces} lines joined)" if result.pieces > 1 else ""
+        note = ""
+        if result.pieces > 1:
+            note = " (" + self.tr("{count} lines joined").format(count=result.pieces) + ")"
         if self._set_guide(result.geometry, layer.crs(), note):
             self._from_selection = True
 
     def _start_drawing(self):
         self._previous_tool = self.canvas.mapTool()
         self.canvas.setMapTool(self._draw_tool)
-        self.draw_button.setText("Drawing: left click adds, right click finishes")
+        self.draw_button.setText(self.tr("Drawing: left click adds, right click finishes"))
         self.finish_button.setVisible(True)
 
     def _stop_drawing(self):
-        self.draw_button.setText("Draw line on map")
+        self.draw_button.setText(self.tr("Draw line on map"))
         self.finish_button.setVisible(False)
         if self._previous_tool is not None:
             self.canvas.setMapTool(self._previous_tool)
@@ -442,7 +462,8 @@ class StripMapMakerDockWidget(QDockWidget):
 
     def _drawn(self, geometry):
         self._stop_drawing()
-        if self._set_guide(geometry, self.canvas.mapSettings().destinationCrs(), " (drawn)"):
+        note = " (" + self.tr("drawn") + ")"
+        if self._set_guide(geometry, self.canvas.mapSettings().destinationCrs(), note):
             self._from_selection = False
 
     def _tolerance(self):
@@ -464,8 +485,10 @@ class StripMapMakerDockWidget(QDockWidget):
         """Make ``geometry`` the guide; returns False (and says why) if it cannot be used."""
         if crs.isGeographic():
             self._message(
-                "The guide is in a geographic CRS (degrees). Reproject the layer, or set the "
-                "project to a projected CRS in metres, and try again."
+                self.tr(
+                    "The guide is in a geographic CRS (degrees). Reproject the layer, or set "
+                    "the project to a projected CRS in metres, and try again."
+                )
             )
             return False
         try:
@@ -474,7 +497,11 @@ class StripMapMakerDockWidget(QDockWidget):
             self._message(str(error))
             return False
         self._crs = crs
-        self.guide_label.setText(f"Guide: {self._source.length():,.0f} m{note}")
+        self.guide_label.setText(
+            self.tr("Guide: {length:,.0f} m{note}").format(
+                length=self._source.length(), note=note
+            )
+        )
         self._schedule_preview()
         return True
 
@@ -511,7 +538,9 @@ class StripMapMakerDockWidget(QDockWidget):
         self._placement = None
         self.create_button.setEnabled(False)
         width, height = self._ground()
-        text = f"Sheet covers {width:,.0f} x {height:,.0f} m on the ground."
+        text = self.tr("Sheet covers {width:,.0f} x {height:,.0f} m on the ground.").format(
+            width=width, height=height
+        )
         if self._source is None:
             self.info_label.setText(text)
             return
@@ -533,9 +562,13 @@ class StripMapMakerDockWidget(QDockWidget):
             self._frames_band.addGeometry(frame.geometry, self._crs)
         self._show_numbers(placement.frames)
         self._guide_band.setToGeometry(guide, self._crs)
-        text += f"\n{len(placement.frames)} sheets, overlap {placement.overlap_pct:.1f} %."
+        text += "\n" + self.tr("{count} sheets, overlap {overlap:.1f} %.").format(
+            count=len(placement.frames), overlap=placement.overlap_pct
+        )
         if placement.uncovered:
-            text += "\nPart of the line is outside the sheets: use a larger sheet or scale."
+            text += "\n" + self.tr(
+                "Part of the line is outside the sheets: use a larger sheet or scale."
+            )
         self.info_label.setText(text)
         self.create_button.setEnabled(True)
 
@@ -544,9 +577,9 @@ class StripMapMakerDockWidget(QDockWidget):
     def _create(self):
         if self._placement is None:
             return
-        name = self.name_edit.text().strip() or "Strip map"
+        name = self.name_edit.text().strip() or self.tr("Strip map")
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save series", f"{name}.gpkg", "GeoPackage (*.gpkg)"
+            self, self.tr("Save series"), f"{name}.gpkg", "GeoPackage (*.gpkg)"
         )
         if not path:
             return
@@ -567,7 +600,7 @@ class StripMapMakerDockWidget(QDockWidget):
             self._message(str(error))
             return
         self._reset(deselect=False)
-        self.info_label.setText(f"Saved {Path(path).name}.")
+        self.info_label.setText(self.tr("Saved {file}.").format(file=Path(path).name))
 
     def _reset(self, *_, deselect=True):
         """Forget the guide line and the preview so a new series can be started."""
@@ -580,7 +613,7 @@ class StripMapMakerDockWidget(QDockWidget):
         self._guide = None
         self._placement = None
         self.create_button.setEnabled(False)
-        self.guide_label.setText("No guide line yet.")
+        self.guide_label.setText(self.tr("No guide line yet."))
         self.info_label.setText("")
         layer = self.layer_combo.currentLayer()
         if deselect and isinstance(layer, QgsVectorLayer):

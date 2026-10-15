@@ -31,6 +31,7 @@ from qgis.core import (
     QgsProperty,
     QgsTextFormat,
 )
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QFont
 
 from .series import LAYOUT_ROTATION_EXPRESSION, ROLE_PROPERTY, Setup
@@ -64,18 +65,27 @@ class AtlasOptions:
 def page_band(page: str, setup: Setup) -> float:
     """Height (mm) left for the band under the map; raises ``AtlasError`` if it won't fit."""
     if page not in PAGES:
-        raise AtlasError(f"Unknown page size '{page}'.")
+        raise AtlasError(
+            QCoreApplication.translate("Atlas", "Unknown page size '{page}'.").format(page=page)
+        )
     width, height = PAGES[page]
     if setup.width_mm > width - 2 * MIN_SIDE_MARGIN:
         raise AtlasError(
-            f"A sheet {setup.width_mm:g} mm wide does not fit on {page} landscape "
-            f"(room for {width - 2 * MIN_SIDE_MARGIN:g} mm). Use a larger page or a narrower sheet."
+            QCoreApplication.translate(
+                "Atlas",
+                "A sheet {sheet:g} mm wide does not fit on {page} landscape "
+                "(room for {room:g} mm). Use a larger page or a narrower sheet.",
+            ).format(sheet=setup.width_mm, page=page, room=width - 2 * MIN_SIDE_MARGIN)
         )
     if setup.height_mm > height - TOP_MARGIN - BOTTOM_MARGIN:
         raise AtlasError(
-            f"A sheet {setup.height_mm:g} mm high does not fit on {page} landscape "
-            f"(room for {height - TOP_MARGIN - BOTTOM_MARGIN:g} mm). Use a larger page or a "
-            "lower sheet."
+            QCoreApplication.translate(
+                "Atlas",
+                "A sheet {sheet:g} mm high does not fit on {page} landscape "
+                "(room for {room:g} mm). Use a larger page or a lower sheet.",
+            ).format(
+                sheet=setup.height_mm, page=page, room=height - TOP_MARGIN - BOTTOM_MARGIN
+            )
         )
     return height - TOP_MARGIN - setup.height_mm - GAP - BOTTOM_MARGIN
 
@@ -155,7 +165,8 @@ def build_atlas(project: QgsProject, frames_layer, setup: Setup, options: AtlasO
     band = page_band(options.page, setup)
     page_width, page_height = PAGES[options.page]
     manager = project.layoutManager()
-    name = _unique_name(manager, options.name or f"{setup.name} atlas")
+    default_name = QCoreApplication.translate("Atlas", "{name} atlas").format(name=setup.name)
+    name = _unique_name(manager, options.name or default_name)
 
     layout = QgsPrintLayout(project)
     layout.initializeDefaults()
@@ -190,10 +201,16 @@ def build_atlas(project: QgsProject, frames_layer, setup: Setup, options: AtlasO
     if band >= MIN_BAND:
         top = TOP_MARGIN + setup.height_mm + GAP
         _label(
-            layout, "Sheet [% @atlas_featurenumber %] of [% @atlas_totalfeatures %]",
+            layout,
+            QCoreApplication.translate(
+                "Atlas", "Sheet [% @atlas_featurenumber %] of [% @atlas_totalfeatures %]"
+            ),
             left, top, 60, 7, 13, bold=True,
         )
-        _label(layout, f"Scale 1:{setup.scale:,}".replace(",", " "), left, top + 8, 60, 6, 10)
+        scale_text = QCoreApplication.translate("Atlas", "Scale 1:{scale}").format(
+            scale=f"{setup.scale:,}".replace(",", " ")
+        )
+        _label(layout, scale_text, left, top + 8, 60, 6, 10)
         x = left + 62
         if options.scale_bar:
             bar = QgsLayoutItemScaleBar(layout)
