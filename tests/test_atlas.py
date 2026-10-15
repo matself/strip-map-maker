@@ -11,6 +11,7 @@ from qgis.core import (  # noqa: E402
     QgsCoordinateReferenceSystem,
     QgsGeometry,
     QgsLayoutItem,
+    QgsLayoutItemLabel,
     QgsLayoutItemMap,
     QgsLayoutItemPicture,
     QgsPointXY,
@@ -74,6 +75,9 @@ def test_build_atlas_from_series(tmp_path):
     assert main.sizeWithUnits().height() == pytest.approx(150)
     assert main.scale() == pytest.approx(1000)
     assert len(maps) == 2  # the main map and the overview
+    label_items = [item for item in layout.items() if isinstance(item, QgsLayoutItemLabel)]
+    sheet_label = next(item for item in label_items if item.text().startswith("Sheet "))
+    assert sheet_label.textFormat().size() == 13 and sheet_label.textFormat().font().bold()
     arrows = [item for item in layout.items() if isinstance(item, QgsLayoutItemPicture)]
     assert len(arrows) == 1
     assert Path(arrows[0].picturePath()).name == "north_arrow.svg"

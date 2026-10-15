@@ -29,6 +29,7 @@ from qgis.core import (
     QgsPrintLayout,
     QgsProject,
     QgsProperty,
+    QgsTextFormat,
 )
 from qgis.PyQt.QtGui import QFont
 
@@ -113,9 +114,13 @@ def _place(item, x, y, width, height):
 def _label(layout, text, x, y, width, height, size, bold=False):
     label = QgsLayoutItemLabel(layout)
     label.setText(text)
-    font = QFont("Arial", size)
+    font = QFont("Arial")
     font.setBold(bold)
-    label.setFont(font)
+    text_format = QgsTextFormat()
+    text_format.setFont(font)
+    text_format.setSize(size)
+    text_format.setSizeUnit(Qgis.RenderUnit.Points)
+    label.setTextFormat(text_format)
     layout.addLayoutItem(label)
     _place(label, x, y, width, height)
     return label
