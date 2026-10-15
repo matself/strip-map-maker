@@ -14,6 +14,7 @@ from dataclasses import dataclass
 
 from qgis.core import (
     Qgis,
+    QgsLayoutItem,
     QgsLayoutItemLabel,
     QgsLayoutItemMap,
     QgsLayoutItemMapOverview,
@@ -38,6 +39,8 @@ BOTTOM_MARGIN = 8.0
 MIN_SIDE_MARGIN = 5.0
 GAP = 3.0  # between the map and the band below it
 MIN_BAND = 14.0  # least height of the band for anything useful
+ARROW_EXTENT = 18.0  # most room (mm) the north arrow may take when turned
+ARROW_GROWTH = 1.3  # a turned arrow's frame grows to about this times its resting size
 NORTH_ARROW = ":/images/north_arrows/layout_default_north_arrow.svg"
 UNIT = Qgis.LayoutUnit.Millimeters
 
@@ -204,8 +207,16 @@ def build_atlas(project: QgsProject, frames_layer, setup: Setup, options: AtlasO
             arrow.setLinkedMap(main)
             arrow.setNorthMode(QgsLayoutItemPicture.NorthMode.GridNorth)
             layout.addLayoutItem(arrow)
-            _place(arrow, x, top, 10, min(band, 14))
-            x += 14
+            # QGIS shrinks a turned picture to fit its box, so the arrow would change size
+            # with the rotation. ZoomResizeFrame lets the frame follow the turned arrow
+            # instead; the frame is anchored at its middle and given room to grow.
+            extent = min(band, ARROW_EXTENT)
+            side = extent / ARROW_GROWTH
+            arrow.setResizeMode(QgsLayoutItemPicture.ResizeMode.ZoomResizeFrame)
+            arrow.setReferencePoint(QgsLayoutItem.ReferencePoint.Middle)
+            arrow.attemptResize(QgsLayoutSize(side, side, UNIT))
+            arrow.attemptMove(QgsLayoutPoint(x + extent / 2, top + extent / 2, UNIT))
+            x += extent + 2
         right = left + setup.width_mm
         if options.overview and right - x >= 30:
             overview = QgsLayoutItemMap(layout)

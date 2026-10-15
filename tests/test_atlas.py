@@ -10,7 +10,9 @@ pytest.importorskip("qgis.core")
 from qgis.core import (  # noqa: E402
     QgsCoordinateReferenceSystem,
     QgsGeometry,
+    QgsLayoutItem,
     QgsLayoutItemMap,
+    QgsLayoutItemPicture,
     QgsPointXY,
     QgsProject,
 )
@@ -72,6 +74,12 @@ def test_build_atlas_from_series(tmp_path):
     assert main.sizeWithUnits().height() == pytest.approx(150)
     assert main.scale() == pytest.approx(1000)
     assert len(maps) == 2  # the main map and the overview
+    arrows = [item for item in layout.items() if isinstance(item, QgsLayoutItemPicture)]
+    assert len(arrows) == 1
+    # the frame follows the turned arrow, so its size does not change with the rotation
+    assert arrows[0].resizeMode() == QgsLayoutItemPicture.ResizeMode.ZoomResizeFrame
+    assert arrows[0].referencePoint() == QgsLayoutItem.ReferencePoint.Middle
+    assert arrows[0].sizeWithUnits().height() <= page_band("A4", read_setup(path))
     assert atlas.updateFeatures() == count
 
     again = build_atlas(project, frames, read_setup(path), AtlasOptions(page="A3"))
