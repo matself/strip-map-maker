@@ -6,6 +6,10 @@ layer, or as a sheet index for planning, inventory and environmental surveys.
 
 Compatible with QGIS 3.34 up to 4.99 (Qt5 and Qt6).
 
+![Sixteen numbered sheets laid out along a winding stream](docs/series-example.png)
+
+*Example series: 16 sheets along a stream. Basemap (c) OpenStreetMap contributors, [ODbL](https://www.openstreetmap.org/copyright).*
+
 ## Usage
 
 1. Open the **Strip Map Maker** panel (toolbar icon or *Plugins* menu) and set the **Sheets**:
