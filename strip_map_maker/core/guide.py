@@ -134,7 +134,8 @@ def smooth_line(geometry: QgsGeometry, window: float) -> QgsGeometry:
     smoothed = []
     for i in range(count + 1):
         r = min(reach, i, count - i)
-        chunk = points[i - r : i + r + 1]
+        first, last = i - r, i + r + 1
+        chunk = points[first:last]
         smoothed.append(
             QgsPointXY(
                 sum(p.x() for p in chunk) / len(chunk), sum(p.y() for p in chunk) / len(chunk)

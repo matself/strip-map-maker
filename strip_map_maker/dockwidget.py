@@ -606,4 +606,3 @@ class StripMapMakerDockWidget(QDockWidget):
     def closeEvent(self, event):  # noqa: N802
         self._clear_preview()
         super().closeEvent(event)
-

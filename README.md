@@ -90,7 +90,7 @@ python -m pytest
 Build an installable zip:
 
 ```bash
-python scripts/build_zip.py   # -> dist/strip_map_maker-0.1.0.zip
+python scripts/build_zip.py   # -> dist/strip_map_maker-0.2.0.zip
 ```
 
 ### Qt5 / Qt6 compatibility rules
