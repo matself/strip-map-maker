@@ -215,7 +215,7 @@ def build_atlas(project: QgsProject, frames_layer, setup: Setup, options: AtlasO
         if options.scale_bar:
             bar = QgsLayoutItemScaleBar(layout)
             bar.setLinkedMap(main)
-            bar.setStyle("Single Box")
+            bar.setStyle("Line Ticks Middle")
             bar.setUnits(Qgis.DistanceUnit.Meters)
             bar.setUnitLabel("m")
             bar.setNumberOfSegmentsLeft(0)

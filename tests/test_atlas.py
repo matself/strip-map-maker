@@ -14,6 +14,7 @@ from qgis.core import (  # noqa: E402
     QgsLayoutItemLabel,
     QgsLayoutItemMap,
     QgsLayoutItemPicture,
+    QgsLayoutItemScaleBar,
     QgsPointXY,
     QgsProject,
 )
@@ -78,6 +79,8 @@ def test_build_atlas_from_series(tmp_path):
     label_items = [item for item in layout.items() if isinstance(item, QgsLayoutItemLabel)]
     sheet_label = next(item for item in label_items if item.text().startswith("Sheet "))
     assert sheet_label.textFormat().size() == 13 and sheet_label.textFormat().font().bold()
+    bars = [item for item in layout.items() if isinstance(item, QgsLayoutItemScaleBar)]
+    assert [bar.style() for bar in bars] == ["Line Ticks Middle"]
     arrows = [item for item in layout.items() if isinstance(item, QgsLayoutItemPicture)]
     assert len(arrows) == 1
     assert Path(arrows[0].picturePath()).name == "north_arrow.svg"
