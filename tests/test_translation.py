@@ -64,6 +64,7 @@ def test_panel_is_swedish_when_the_translation_is_loaded(swedish):
     assert dock.create_button.text() == "Spara serie..."
     assert dock.atlas_button.text() == "Skapa atlas"
     assert dock.guide_label.text() == "Ingen guidelinje än."
+    assert dock.name_edit.text() == "kartserie"  # the default series name
     assert dock.preset_combo.itemText(1) == "A4 liggande"
     assert dock.preset_combo.itemData(1) == "A4 landscape"  # the key stays English
     guide = QgsGeometry.fromPolylineXY([QgsPointXY(0, 0), QgsPointXY(2000, 0)])

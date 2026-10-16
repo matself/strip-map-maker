@@ -226,7 +226,7 @@
             <location filename="../dockwidget.py" line="228" />
             <location filename="../dockwidget.py" line="580" />
             <source>Strip map</source>
-            <translation>Remsakarta</translation>
+            <translation>kartserie</translation>
         </message>
         <message>
             <location filename="../dockwidget.py" line="229" />
