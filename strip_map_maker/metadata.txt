@@ -3,7 +3,7 @@ name=Strip Map Maker
 qgisMinimumVersion=3.34
 qgisMaximumVersion=4.99
 description=Creates rotated, overlapping map sheets along a winding line for a given scale and sheet size.
-version=0.3.0
+version=0.4.0
 author=Mats Elfström
 email=mats.elfstrom@gmail.com
 about=Strip Map Maker lays out a numbered series of rotated, overlapping map sheets along a line such as a road, pipeline, river or power line. Select or draw the line, choose sheet size, scale, overlap and optional smoothing, and the plugin stores the sheets in a GeoPackage with sheet number, bearing and distance along the line. The result can be used as a QGIS Atlas coverage layer or as a sheet index for planning, inventory and environmental surveys. The interface is in English and has a complete Swedish translation, used when QGIS is set to Swedish.
@@ -17,6 +17,8 @@ experimental=True
 deprecated=False
 license=GPL-2.0-or-later
 changelog=
+    0.4.0 - Atlas scale bar uses the Line Ticks Middle style; Swedish default series name 'kartserie'
+          - The compiled Swedish translation is now part of the repository, so builds from source include it
     0.3.0 - Swedish translation of the panel, messages and atlas texts (follows the QGIS language; English is the default)
     0.2.0 - Atlas tab builds a print layout (map, sheet number, scale bar, north arrow, overview map) from a saved series
           - Sheets are spaced by their real overlap on bends; leftover length is shared evenly over all overlaps
