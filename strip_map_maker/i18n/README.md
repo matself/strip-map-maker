@@ -2,8 +2,9 @@
 
 Source strings are English. Each language is a Qt Linguist file `strip_map_maker_<code>.ts`
 compiled to `strip_map_maker_<code>.qm`; `plugin.py` loads the `.qm` that matches the QGIS
-language automatically. The `.ts` file is the source and is kept in the repository; only the
-`.qm` goes into the plugin zip.
+language automatically. Both the `.ts` source and the compiled `.qm` are kept in the
+repository (CI and the zip need the `.qm`); only the `.qm` goes into the plugin zip. Recompile
+and commit the `.qm` whenever the `.ts` changes.
 
 Strings are marked with `self.tr()` in the panel and `QCoreApplication.translate()` in
 `core/` (contexts `Guide`, `Placement`, `Atlas`, `Series`). Texts with values use named
