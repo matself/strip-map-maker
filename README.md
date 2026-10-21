@@ -34,6 +34,9 @@ is never smaller than requested (the last sheet may overlap more). Sheets that d
 particular stretch can be moved or rotated with QGIS's own editing tools; the sheet label follows
 the geometry.
 
+To try the plugin, load [tests/data/example_line.geojson](tests/data/example_line.geojson)
+(a winding line of about 5 km in EPSG:3006), select it and press *Save series...*.
+
 ## Making an atlas
 
 Open the **Atlas** tab, choose a saved series (from the project, or *Open series file...*) and a
@@ -102,7 +105,7 @@ python -m pytest
 Build an installable zip:
 
 ```bash
-python scripts/build_zip.py   # -> dist/strip_map_maker-0.4.0.zip
+python scripts/build_zip.py   # -> dist/strip_map_maker-1.0.0.zip
 ```
 
 ### Qt5 / Qt6 compatibility rules
